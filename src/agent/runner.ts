@@ -72,7 +72,7 @@ export async function runEnrichment(
     log.log(`adapters loaded in ${Date.now() - runStart}ms`);
 
     const draft = await withTimeout(
-      runStep('enrich', () => generateDraft(llm, req, settings.llm)),
+      runStep('enrich', () => generateDraft(llm, req, settings.llm, settings.language)),
       SOFT_TIMEOUT_MS,
     );
 
@@ -89,9 +89,13 @@ export async function runEnrichment(
 
     let termAudioBlobId: string | undefined;
     if (settings.tts.generateTermAudio) {
+      // Synthesize the term in the LEARNING language (matches what gets
+      // rendered as {{Term}} on the card back). Falling back to the
+      // sentence-internal form if the request didn't carry an input term.
+      const termText = (req.term ?? draft.termInSentence).trim();
       const r = await runStep('tts_synthesize_term', () =>
         synthesizeAndRecord(
-          draft.termTranslation,
+          termText,
           settings.tts.voiceId,
           settings.tts.provider,
           tts,
@@ -142,11 +146,12 @@ async function generateDraft(
   llm: BaseChatModel,
   req: AgentRequest,
   llmMeta: { provider: string; model: string },
+  language: { learning: string; fluent: string },
 ): Promise<EnrichmentDraft> {
   let lastErr: unknown;
   let extraHint = '';
   for (let attempt = 1; attempt <= ENRICHMENT_RETRIES + 1; attempt++) {
-    const prompt = buildPrompt(req, extraHint);
+    const prompt = buildPrompt(req, extraHint, language);
     const start = Date.now();
     try {
       const structured = (
@@ -175,7 +180,7 @@ async function generateDraft(
         estCostUSD: estimateLLMCost(llmMeta.provider, llmMeta.model, inputTokens, outputTokens),
       });
 
-      const violation = checkDraft(req, draft);
+      const violation = checkDraft(req, draft, language);
       if (violation) {
         log.warn(`enrich attempt ${attempt} rejected: ${violation}`);
         extraHint =
@@ -199,14 +204,21 @@ async function generateDraft(
   throw lastErr ?? new Error('enrich: exhausted retries with no error captured');
 }
 
-function buildPrompt(req: AgentRequest, extraHint: string): string {
+function buildPrompt(
+  req: AgentRequest,
+  extraHint: string,
+  language: { learning: string; fluent: string },
+): string {
   const inputs: Record<string, unknown> = { mode: req.mode, term: req.term };
   if (req.rawContext) inputs.rawContext = req.rawContext;
   if (req.sentence) inputs.sentence = req.sentence;
   if (req.termSpan) inputs.termSpan = req.termSpan;
   if (req.termType) inputs.termTypeHint = req.termType;
 
-  return `You are Hermes, a vocabulary-card enricher for a Brazilian Portuguese learner of English.
+  const L = language.learning;
+  const F = language.fluent;
+
+  return `You are Hermes, a vocabulary-card enricher for a ${F}-speaking learner of ${L}.
 
 Produce a SINGLE JSON object that satisfies this schema:
 
@@ -214,15 +226,15 @@ Produce a SINGLE JSON object that satisfies this schema:
   "type": "word" | "phrasal_verb",
   "baseVerb": string | null,        // only when type === "phrasal_verb" (the bare verb, e.g. "set")
   "particle": string | null,        // only when type === "phrasal_verb" (everything after, e.g. "aside")
-  "sentence": string,               // EN sentence shown on the card front
+  "sentence": string,               // ${L} sentence shown on the card front
   "termInSentence": string,         // VERBATIM substring of "sentence" — the inflected form as it appears
-  "translation": string,            // PT-BR translation of "sentence"
-  "translatedTerm": string,         // VERBATIM substring of "translation" — the PT phrase that conveys the EN term
-  "termTranslation": string         // PT-BR lemma form for the back of the flashcard
+  "translation": string,            // ${F} translation of "sentence"
+  "translatedTerm": string,         // VERBATIM substring of "translation" — the ${F} phrase that conveys the term
+  "termTranslation": string         // ${F} lemma form for the back of the flashcard
 }
 
 # Mode A (term + optional rawContext provided, no sentence)
-- Write ONE natural, idiomatic EN sentence (12–22 words) using the term in a context where the meaning is unambiguous.
+- Write ONE natural, idiomatic ${L} sentence (12–22 words) using the term in a context where the meaning is unambiguous.
 - The term may be inflected (tense/number/person). For phrasal verbs, keep verb + particle adjacent.
 
 # Mode B (sentence + termSpan provided)
@@ -235,26 +247,18 @@ Produce a SINGLE JSON object that satisfies this schema:
 - Do NOT emit a lemma or a paraphrase here; emit the form as it actually appears.
 
 # Phrasal-verb rule (MANDATORY)
-- Classify as "phrasal_verb" only when EN is verb + 1–2 particles forming one lexical unit ("look after", "come up with", "set aside", "called on", "ran into"). Idioms / prepositional phrases like "through the press" are "word".
+- Classify as "phrasal_verb" only when ${L} input is verb + 1–2 particles forming one lexical unit ("look after", "come up with", "set aside", "called on", "ran into"). Idioms / prepositional phrases are "word".
 - For phrasal verbs, set baseVerb (bare verb) and particle (everything after). e.g. "came up with" → baseVerb "come", particle "up with".
-- "translatedTerm" MUST cover the FULL PT phrase that translates the phrasal verb, not just the verb head:
-    EN "set aside"   → translatedTerm "deixar de lado" (NOT "deixar")
-    EN "look after"  → translatedTerm "cuidar"        (or "cuidar de" if the "de" is adjacent in the sentence)
-    EN "came up with"→ translatedTerm "inventou"      (single PT verb covers it)
+- "translatedTerm" MUST cover the FULL ${F} phrase that translates the phrasal verb, not just the verb head.
 
 # Consistency rule (MANDATORY)
 - "termTranslation" is the lemma form of "translatedTerm" — same lexical content, normalized to dictionary/infinitive form. It must not pick a different translation than the one used in the sentence.
-    translatedTerm "chamou"          → termTranslation "chamar"
-    translatedTerm "deixar de lado"  → termTranslation "deixar de lado"
-    translatedTerm "pela imprensa"   → termTranslation "pela imprensa"
-    translatedTerm "inventou"        → termTranslation "inventar"
-    translatedTerm "resistiram"      → termTranslation "resistir"
 
 # Echo guards
-- "translation" must be Portuguese — never echo the English sentence.
-- "translatedTerm" and "termTranslation" must be Portuguese — never echo the English term.
+- "translation" must be ${F} — never echo the ${L} sentence.
+- "translatedTerm" and "termTranslation" must be ${F} — never echo the ${L} term.
 
-# Worked examples
+# Worked examples (the examples below illustrate the JSON shape using EN→PT-BR; use the same shape but in ${L}→${F})
 
 Example A1 (mode A, single word, past tense):
   Inputs: { mode: "A", term: "endure" }
@@ -314,7 +318,13 @@ ${extraHint ? `\n${extraHint}` : ''}
 Return ONLY the JSON object — no prose, no markdown.`;
 }
 
-function checkDraft(req: AgentRequest, d: EnrichmentDraft): string | null {
+function checkDraft(
+  req: AgentRequest,
+  d: EnrichmentDraft,
+  language: { learning: string; fluent: string },
+): string | null {
+  const L = language.learning;
+  const F = language.fluent;
   if (!isSubstringCI(d.sentence, d.termInSentence)) {
     return `termInSentence "${d.termInSentence}" is not a contiguous substring of sentence "${d.sentence}".`;
   }
@@ -322,16 +332,16 @@ function checkDraft(req: AgentRequest, d: EnrichmentDraft): string | null {
     return `translatedTerm "${d.translatedTerm}" is not a contiguous substring of translation "${d.translation}".`;
   }
   if (sameText(d.translation, d.sentence)) {
-    return 'translation is identical to sentence — output must be Portuguese, not English.';
+    return `translation is identical to sentence — output must be ${F}, not ${L}.`;
   }
   if (sameText(d.translatedTerm, d.termInSentence)) {
-    return 'translatedTerm is identical to termInSentence — must be Portuguese, not English.';
+    return `translatedTerm is identical to termInSentence — must be ${F}, not ${L}.`;
   }
   if (sameText(d.termTranslation, d.termInSentence)) {
-    return 'termTranslation is identical to termInSentence — must be Portuguese, not English.';
+    return `termTranslation is identical to termInSentence — must be ${F}, not ${L}.`;
   }
   if (req.term && sameText(d.termTranslation, req.term)) {
-    return `termTranslation "${d.termTranslation}" is identical to the input English term — must be Portuguese.`;
+    return `termTranslation "${d.termTranslation}" is identical to the input ${L} term — must be ${F}.`;
   }
   if (req.mode === 'B' && req.sentence && d.sentence !== req.sentence) {
     return `Mode B sentence must be returned verbatim. Expected: "${req.sentence}".`;
@@ -379,7 +389,7 @@ async function synthesizeAndRecord(
   return { blobId };
 }
 
-// Refuse to save a card whose PT-BR fields are just the English source. The
+// Refuse to save a card whose translation fields are just the source. The
 // echo guards inside checkDraft already block this, but a final guard stops
 // any provider quirk from sneaking through after schema parse.
 function guardEnrichment(
@@ -393,13 +403,13 @@ function guardEnrichment(
   if (term && termTr === term) {
     return {
       ok: false,
-      reason: `termTranslation "${e.termTranslation}" is identical to the English term — try regenerating.`,
+      reason: `termTranslation "${e.termTranslation}" is identical to the source term — try regenerating.`,
     };
   }
   if (sentence && sentTr === sentence) {
     return {
       ok: false,
-      reason: `sentenceTranslation is identical to the English sentence — try regenerating.`,
+      reason: `sentenceTranslation is identical to the source sentence — try regenerating.`,
     };
   }
   const enHi = e.sentence.slice(e.sentenceHighlight.start, e.sentenceHighlight.end).trim().toLowerCase();

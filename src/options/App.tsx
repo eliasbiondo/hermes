@@ -1,15 +1,32 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { loadSettings, saveSettings } from '@/lib/storage/settings-store';
-import { exportCSV, exportJSON, importJSON } from '@/lib/io/json-csv';
-import { currentMonth, listMonths, summarizeMonth, type MonthlySummary } from '@/lib/quota/store';
-import { getTTS } from '@/lib/tts/factory';
-import { hasRequiredKeys, type LLMProvider, type Settings, type TTSProvider } from '@/types/settings';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { loadSettings, saveSettings } from "@/lib/storage/settings-store";
+import { exportCSV, exportJSON, importJSON } from "@/lib/io/json-csv";
+import {
+  currentMonth,
+  listMonths,
+  summarizeMonth,
+  type MonthlySummary,
+} from "@/lib/quota/store";
+import { getTTS } from "@/lib/tts/factory";
+import {
+  hasRequiredKeys,
+  isEdgeAvailableFor,
+  LANGUAGE_OPTIONS,
+  type LanguageName,
+  type LLMProvider,
+  type Settings,
+  type TTSProvider,
+} from "@/types/settings";
 import {
   ensureLLMPermission,
   ensureTTSPermission,
-} from '@/lib/providers/host-permissions';
-import { testLLM, testTTS, type TestResult } from '@/lib/providers/test-connection';
-import { Select } from '@/components/Select';
+} from "@/lib/providers/host-permissions";
+import {
+  testLLM,
+  testTTS,
+  type TestResult,
+} from "@/lib/providers/test-connection";
+import { Select } from "@/components/Select";
 
 interface LLMProviderInfo {
   value: LLMProvider;
@@ -19,10 +36,30 @@ interface LLMProviderInfo {
 }
 
 const LLM_PROVIDERS: LLMProviderInfo[] = [
-  { value: 'gemini',     label: 'Gemini',     defaultModel: 'gemini-2.5-flash', tag: 'recommended' },
-  { value: 'openai',     label: 'OpenAI',     defaultModel: 'gpt-4o',           tag: 'GPT family' },
-  { value: 'anthropic',  label: 'Anthropic',  defaultModel: 'claude-sonnet-4-6',tag: 'Claude family' },
-  { value: 'openrouter', label: 'OpenRouter', defaultModel: 'openai/gpt-4o',    tag: 'multi-model' },
+  {
+    value: "gemini",
+    label: "Gemini",
+    defaultModel: "gemini-2.5-flash",
+    tag: "recommended",
+  },
+  {
+    value: "openai",
+    label: "OpenAI",
+    defaultModel: "gpt-4o",
+    tag: "GPT family",
+  },
+  {
+    value: "anthropic",
+    label: "Anthropic",
+    defaultModel: "claude-sonnet-4-6",
+    tag: "Claude family",
+  },
+  {
+    value: "openrouter",
+    label: "OpenRouter",
+    defaultModel: "openai/gpt-4o",
+    tag: "multi-model",
+  },
 ];
 
 interface TTSProviderInfo {
@@ -32,41 +69,42 @@ interface TTSProviderInfo {
 }
 
 const TTS_PROVIDERS: TTSProviderInfo[] = [
-  { value: 'edge',       label: 'Microsoft Edge', tag: 'free · neural' },
-  { value: 'elevenlabs', label: 'ElevenLabs',     tag: 'paid · premium' },
-  { value: 'browser',    label: 'Browser TTS',    tag: 'free · fallback' },
+  { value: "edge", label: "Microsoft Edge", tag: "free · neural · English only" },
+  { value: "elevenlabs", label: "ElevenLabs", tag: "paid · multi-language" },
 ];
 
 const EDGE_VOICES = [
-  { id: 'en-US-AriaNeural',    label: 'Aria — US, female' },
-  { id: 'en-US-JennyNeural',   label: 'Jenny — US, female' },
-  { id: 'en-US-GuyNeural',     label: 'Guy — US, male' },
-  { id: 'en-US-AndrewNeural',  label: 'Andrew — US, male' },
-  { id: 'en-US-EmmaNeural',    label: 'Emma — US, female' },
-  { id: 'en-GB-SoniaNeural',   label: 'Sonia — UK, female' },
-  { id: 'en-GB-RyanNeural',    label: 'Ryan — UK, male' },
+  { id: "en-US-AriaNeural", label: "Aria — US, female" },
+  { id: "en-US-JennyNeural", label: "Jenny — US, female" },
+  { id: "en-US-GuyNeural", label: "Guy — US, male" },
+  { id: "en-US-AndrewNeural", label: "Andrew — US, male" },
+  { id: "en-US-EmmaNeural", label: "Emma — US, female" },
+  { id: "en-GB-SoniaNeural", label: "Sonia — UK, female" },
+  { id: "en-GB-RyanNeural", label: "Ryan — UK, male" },
 ];
 
 const SECTION_IDS = [
-  'sec-llm',
-  'sec-tts',
-  'sec-anki',
-  'sec-capture',
-  'sec-usage',
-  'sec-backup',
-  'sec-debug',
+  "sec-languages",
+  "sec-llm",
+  "sec-tts",
+  "sec-anki",
+  "sec-capture",
+  "sec-usage",
+  "sec-backup",
+  "sec-debug",
 ] as const;
 
 type SectionId = (typeof SECTION_IDS)[number];
 
 const SECTION_LABELS: Record<SectionId, string> = {
-  'sec-llm':     'Language model',
-  'sec-tts':     'Voice',
-  'sec-anki':    'Anki export',
-  'sec-capture': 'Capture',
-  'sec-usage':   'Usage',
-  'sec-backup':  'Backup',
-  'sec-debug':   'Developer',
+  "sec-languages": "Languages",
+  "sec-llm": "Language model",
+  "sec-tts": "Voice",
+  "sec-anki": "Anki export",
+  "sec-capture": "Capture",
+  "sec-usage": "Usage",
+  "sec-backup": "Backup",
+  "sec-debug": "Developer",
 };
 
 export default function App() {
@@ -76,18 +114,30 @@ export default function App() {
   const [llmTesting, setLlmTesting] = useState(false);
   const [ttsTesting, setTtsTesting] = useState(false);
   const [previewing, setPreviewing] = useState(false);
-  const [previewMsg, setPreviewMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [previewMsg, setPreviewMsg] = useState<{
+    kind: "ok" | "err";
+    text: string;
+  } | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
-  const [importStatus, setImportStatus] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [importStatus, setImportStatus] = useState<{
+    kind: "ok" | "err";
+    text: string;
+  } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [months, setMonths] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonth());
   const [usage, setUsage] = useState<MonthlySummary | null>(null);
-  const [activeSection, setActiveSection] = useState<SectionId>('sec-llm');
+  const [activeSection, setActiveSection] = useState<SectionId>("sec-languages");
 
-  useEffect(() => { void listMonths().then(setMonths); }, [savedAt]);
-  useEffect(() => { void summarizeMonth(selectedMonth).then(setUsage); }, [selectedMonth, savedAt]);
-  useEffect(() => { void loadSettings().then(setSettings); }, []);
+  useEffect(() => {
+    void listMonths().then(setMonths);
+  }, [savedAt]);
+  useEffect(() => {
+    void summarizeMonth(selectedMonth).then(setUsage);
+  }, [selectedMonth, savedAt]);
+  useEffect(() => {
+    void loadSettings().then(setSettings);
+  }, []);
 
   const monthOptions = useMemo(() => {
     const list = months.length ? months : [selectedMonth];
@@ -100,10 +150,12 @@ export default function App() {
       (entries) => {
         const visible = entries
           .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+          .sort(
+            (a, b) => a.boundingClientRect.top - b.boundingClientRect.top,
+          )[0];
         if (visible) setActiveSection(visible.target.id as SectionId);
       },
-      { rootMargin: '-15% 0px -65% 0px', threshold: 0 },
+      { rootMargin: "-15% 0px -65% 0px", threshold: 0 },
     );
     for (const id of SECTION_IDS) {
       const el = document.getElementById(id);
@@ -129,16 +181,16 @@ export default function App() {
   const onLLMProviderChange = async (provider: LLMProvider) => {
     const def = LLM_PROVIDERS.find((p) => p.value === provider)!;
     await ensureLLMPermission(provider);
-    await update({ llm: { ...settings.llm, provider, model: def.defaultModel } });
+    await update({
+      llm: { ...settings.llm, provider, model: def.defaultModel },
+    });
     setLlmTest(null);
   };
 
   const onTTSProviderChange = async (provider: TTSProvider) => {
-    if (provider !== 'browser') await ensureTTSPermission(provider);
+    await ensureTTSPermission(provider);
     const voiceId =
-      provider === 'edge' ? 'en-US-JennyNeural' :
-      provider === 'elevenlabs' ? 'BIvP0GN1cAtSRTxNHnWS' :
-      settings.tts.voiceId;
+      provider === "edge" ? "en-US-JennyNeural" : "BIvP0GN1cAtSRTxNHnWS";
     await update({ tts: { ...settings.tts, provider, voiceId } });
     setTtsTest(null);
   };
@@ -149,7 +201,11 @@ export default function App() {
     try {
       const granted = await ensureLLMPermission(settings.llm.provider);
       if (!granted) {
-        setLlmTest({ ok: false, latencyMs: 0, message: 'Host permission denied.' });
+        setLlmTest({
+          ok: false,
+          latencyMs: 0,
+          message: "Host permission denied.",
+        });
         return;
       }
       setLlmTest(await testLLM(settings.llm));
@@ -164,7 +220,11 @@ export default function App() {
     try {
       const granted = await ensureTTSPermission(settings.tts.provider);
       if (!granted) {
-        setTtsTest({ ok: false, latencyMs: 0, message: 'Host permission denied.' });
+        setTtsTest({
+          ok: false,
+          latencyMs: 0,
+          message: "Host permission denied.",
+        });
         return;
       }
       setTtsTest(await testTTS(settings.tts));
@@ -179,16 +239,24 @@ export default function App() {
     try {
       const tts = await getTTS(settings.tts);
       const blob = await tts.synthesize(
-        'Hello — this is a preview of the selected Hermes voice.',
+        "Hello — this is a preview of the selected Hermes voice.",
         settings.tts.voiceId,
       );
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
-      audio.addEventListener('ended', () => URL.revokeObjectURL(url), { once: true });
+      audio.addEventListener("ended", () => URL.revokeObjectURL(url), {
+        once: true,
+      });
       await audio.play();
-      setPreviewMsg({ kind: 'ok', text: `Played ${(blob.size / 1024).toFixed(1)} KB` });
+      setPreviewMsg({
+        kind: "ok",
+        text: `Played ${(blob.size / 1024).toFixed(1)} KB`,
+      });
     } catch (e) {
-      setPreviewMsg({ kind: 'err', text: e instanceof Error ? e.message : String(e) });
+      setPreviewMsg({
+        kind: "err",
+        text: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       setPreviewing(false);
     }
@@ -202,15 +270,17 @@ export default function App() {
         <div className="options__topbar-brand">
           <BrandIcon size={14} />
           <span>Hermes</span>
-          <span className="options__topbar-sep" aria-hidden="true">/</span>
+          <span className="options__topbar-sep" aria-hidden="true">
+            /
+          </span>
           <span className="options__topbar-page">Settings</span>
         </div>
         <span
-          className={`options__topbar-status ${ready ? 'is-ready' : 'is-blocked'}`}
+          className={`options__topbar-status ${ready ? "is-ready" : "is-blocked"}`}
           role="status"
         >
           <span className="options__topbar-dot" aria-hidden="true" />
-          {ready ? 'Capture live' : 'Capture paused'}
+          {ready ? "Capture live" : "Capture paused"}
         </span>
       </header>
 
@@ -221,39 +291,110 @@ export default function App() {
             <a
               key={id}
               href={`#${id}`}
-              className={`options__nav-link${activeSection === id ? ' is-current' : ''}`}
+              className={`options__nav-link${activeSection === id ? " is-current" : ""}`}
             >
               <span className="options__nav-link-rail" aria-hidden="true" />
-              <span className="options__nav-link-text">{SECTION_LABELS[id]}</span>
+              <span className="options__nav-link-text">
+                {SECTION_LABELS[id]}
+              </span>
             </a>
           ))}
         </nav>
 
         <div className="options__sections">
           <div className="options__hero">
-            <p className="options__hero-eyebrow">Workspace</p>
             <h1>Settings</h1>
             <p className="options__lede">
-              Bring your own keys. Captures route directly from your browser to your provider — never through us.
+              Bring your own keys. Captures route directly from your browser to
+              your provider — never through us.
             </p>
           </div>
+
+          {/* ─── Languages ─── */}
+          <section className="options__section" id="sec-languages">
+            <SectionHead
+              title="Languages"
+              hint={`Hermes generates ${settings.language.learning} sentences and translates them to ${settings.language.fluent}.`}
+            />
+
+            <div className="options__row">
+              <div className="options__row-label">
+                Learning
+                <span className="options__row-help">
+                  The language you're studying.
+                </span>
+              </div>
+              <div className="options__row-input">
+                <Select
+                  ariaLabel="Learning language"
+                  value={settings.language.learning}
+                  onChange={(v) => {
+                    const learning = v as LanguageName;
+                    const patch: Partial<Settings> = {
+                      language: { ...settings.language, learning },
+                    };
+                    // Edge only ships English neural voices — auto-switch to
+                    // ElevenLabs if the user moves off English while Edge is
+                    // selected, so they aren't stuck with an English voice.
+                    if (
+                      settings.tts.provider === "edge" &&
+                      !isEdgeAvailableFor(learning)
+                    ) {
+                      patch.tts = {
+                        ...settings.tts,
+                        provider: "elevenlabs",
+                        voiceId: "BIvP0GN1cAtSRTxNHnWS",
+                      };
+                    }
+                    void update(patch);
+                  }}
+                  options={LANGUAGE_OPTIONS.map((l) => ({ value: l, label: l }))}
+                />
+              </div>
+            </div>
+
+            <div className="options__row">
+              <div className="options__row-label">
+                Fluent
+                <span className="options__row-help">
+                  Your native or fluent language — translations land here.
+                </span>
+              </div>
+              <div className="options__row-input">
+                <Select
+                  ariaLabel="Fluent language"
+                  value={settings.language.fluent}
+                  onChange={(v) =>
+                    void update({
+                      language: { ...settings.language, fluent: v as LanguageName },
+                    })
+                  }
+                  options={LANGUAGE_OPTIONS.map((l) => ({ value: l, label: l }))}
+                />
+              </div>
+            </div>
+          </section>
 
           {/* ─── LLM ─── */}
           <section className="options__section" id="sec-llm">
             <SectionHead
               title="Language model"
-              hint="Writes example sentences and translates EN → PT-BR."
-              status={llmTest && {
-                ok: llmTest.ok,
-                text: llmTest.ok ? 'Connected' : 'Failed',
-                latencyMs: llmTest.latencyMs,
-              }}
+              hint={`Writes example sentences and translates ${settings.language.learning} → ${settings.language.fluent}.`}
+              status={
+                llmTest && {
+                  ok: llmTest.ok,
+                  text: llmTest.ok ? "Connected" : "Failed",
+                  latencyMs: llmTest.latencyMs,
+                }
+              }
             />
 
             <div className="options__row">
               <div className="options__row-label">
                 Provider
-                <span className="options__row-help">Pick where requests are sent.</span>
+                <span className="options__row-help">
+                  Pick where requests are sent.
+                </span>
               </div>
               <div className="options__row-input">
                 <Select
@@ -272,7 +413,9 @@ export default function App() {
             <div className="options__row">
               <div className="options__row-label">
                 API key
-                <span className="options__row-help">Stored locally. Never synced.</span>
+                <span className="options__row-help">
+                  Stored locally. Never synced.
+                </span>
               </div>
               <div className="options__row-input">
                 <input
@@ -281,7 +424,11 @@ export default function App() {
                   autoComplete="off"
                   spellCheck={false}
                   value={settings.llm.apiKey}
-                  onChange={(e) => void update({ llm: { ...settings.llm, apiKey: e.target.value } })}
+                  onChange={(e) =>
+                    void update({
+                      llm: { ...settings.llm, apiKey: e.target.value },
+                    })
+                  }
                   placeholder={`Paste your ${labelOf(settings.llm.provider)} key`}
                 />
               </div>
@@ -290,14 +437,20 @@ export default function App() {
             <div className="options__row">
               <div className="options__row-label">
                 Model
-                <span className="options__row-help">Override the default if needed.</span>
+                <span className="options__row-help">
+                  Override the default if needed.
+                </span>
               </div>
               <div className="options__row-input">
                 <input
                   type="text"
                   className="options__input"
                   value={settings.llm.model}
-                  onChange={(e) => void update({ llm: { ...settings.llm, model: e.target.value } })}
+                  onChange={(e) =>
+                    void update({
+                      llm: { ...settings.llm, model: e.target.value },
+                    })
+                  }
                 />
               </div>
             </div>
@@ -309,10 +462,12 @@ export default function App() {
                 onClick={() => void onTestLLM()}
                 disabled={llmTesting || !settings.llm.apiKey.trim()}
               >
-                {llmTesting ? 'Testing…' : 'Test connection'}
+                {llmTesting ? "Testing…" : "Test connection"}
               </button>
               {llmTest && !llmTest.ok && (
-                <span className="options__inline-status is-err">{llmTest.message}</span>
+                <span className="options__inline-status is-err">
+                  {llmTest.message}
+                </span>
               )}
             </div>
           </section>
@@ -322,24 +477,32 @@ export default function App() {
             <SectionHead
               title="Voice"
               hint="Generates the pronunciation embedded in every Anki card."
-              status={ttsTest && {
-                ok: ttsTest.ok,
-                text: ttsTest.ok ? 'Connected' : 'Failed',
-                latencyMs: ttsTest.latencyMs,
-              }}
+              status={
+                ttsTest && {
+                  ok: ttsTest.ok,
+                  text: ttsTest.ok ? "Connected" : "Failed",
+                  latencyMs: ttsTest.latencyMs,
+                }
+              }
             />
 
             <div className="options__row">
               <div className="options__row-label">
                 Provider
-                <span className="options__row-help">Free options work without a key.</span>
+                <span className="options__row-help">
+                  Free options work without a key.
+                </span>
               </div>
               <div className="options__row-input">
                 <Select
                   ariaLabel="Audio processor"
                   value={settings.tts.provider}
                   onChange={(v) => void onTTSProviderChange(v as TTSProvider)}
-                  options={TTS_PROVIDERS.map((p) => ({
+                  options={TTS_PROVIDERS.filter(
+                    (p) =>
+                      p.value !== "edge" ||
+                      isEdgeAvailableFor(settings.language.learning),
+                  ).map((p) => ({
                     value: p.value,
                     label: p.label,
                     hint: p.tag,
@@ -348,7 +511,7 @@ export default function App() {
               </div>
             </div>
 
-            {settings.tts.provider === 'edge' && (
+            {settings.tts.provider === "edge" && (
               <div className="options__row">
                 <div className="options__row-label">Voice</div>
                 <div className="options__row-input">
@@ -358,13 +521,16 @@ export default function App() {
                     onChange={(v) =>
                       void update({ tts: { ...settings.tts, voiceId: v } })
                     }
-                    options={EDGE_VOICES.map((v) => ({ value: v.id, label: v.label }))}
+                    options={EDGE_VOICES.map((v) => ({
+                      value: v.id,
+                      label: v.label,
+                    }))}
                   />
                 </div>
               </div>
             )}
 
-            {settings.tts.provider === 'elevenlabs' && (
+            {settings.tts.provider === "elevenlabs" && (
               <>
                 <div className="options__row">
                   <div className="options__row-label">
@@ -377,9 +543,11 @@ export default function App() {
                       className="options__input"
                       autoComplete="off"
                       spellCheck={false}
-                      value={settings.tts.apiKey ?? ''}
+                      value={settings.tts.apiKey ?? ""}
                       onChange={(e) =>
-                        void update({ tts: { ...settings.tts, apiKey: e.target.value } })
+                        void update({
+                          tts: { ...settings.tts, apiKey: e.target.value },
+                        })
                       }
                     />
                   </div>
@@ -387,7 +555,9 @@ export default function App() {
                 <div className="options__row">
                   <div className="options__row-label">
                     Voice ID
-                    <span className="options__row-help">Find one in ElevenLabs › Voices.</span>
+                    <span className="options__row-help">
+                      Find one in ElevenLabs › Voices.
+                    </span>
                   </div>
                   <div className="options__row-input">
                     <input
@@ -395,7 +565,9 @@ export default function App() {
                       className="options__input"
                       value={settings.tts.voiceId}
                       onChange={(e) =>
-                        void update({ tts: { ...settings.tts, voiceId: e.target.value } })
+                        void update({
+                          tts: { ...settings.tts, voiceId: e.target.value },
+                        })
                       }
                     />
                   </div>
@@ -419,10 +591,11 @@ export default function App() {
                 onClick={() => void onTestTTS()}
                 disabled={
                   ttsTesting ||
-                  (settings.tts.provider === 'elevenlabs' && !(settings.tts.apiKey ?? '').trim())
+                  (settings.tts.provider === "elevenlabs" &&
+                    !(settings.tts.apiKey ?? "").trim())
                 }
               >
-                {ttsTesting ? 'Testing…' : 'Test connection'}
+                {ttsTesting ? "Testing…" : "Test connection"}
               </button>
               <button
                 type="button"
@@ -430,14 +603,16 @@ export default function App() {
                 onClick={() => void onPreviewVoice()}
                 disabled={previewing}
               >
-                {previewing ? 'Generating…' : 'Preview voice'}
+                {previewing ? "Generating…" : "Preview voice"}
               </button>
               {ttsTest && !ttsTest.ok && (
-                <span className="options__inline-status is-err">{ttsTest.message}</span>
+                <span className="options__inline-status is-err">
+                  {ttsTest.message}
+                </span>
               )}
               {previewMsg && (
                 <span
-                  className={`options__inline-status ${previewMsg.kind === 'ok' ? 'is-ok' : 'is-err'}`}
+                  className={`options__inline-status ${previewMsg.kind === "ok" ? "is-ok" : "is-err"}`}
                 >
                   {previewMsg.text}
                 </span>
@@ -449,13 +624,20 @@ export default function App() {
           <section className="options__section" id="sec-anki">
             <SectionHead
               title="Anki export"
-              hint={<>Where your cards land. Note type is locked to <code>Hermes Card</code>.</>}
+              hint={
+                <>
+                  Where your cards land. Note type is locked to{" "}
+                  <code>Hermes Card</code>.
+                </>
+              }
             />
 
             <div className="options__row">
               <div className="options__row-label">
                 Deck name
-                <span className="options__row-help">Use <code>::</code> for nested decks.</span>
+                <span className="options__row-help">
+                  Use <code>::</code> for nested decks.
+                </span>
               </div>
               <div className="options__row-input">
                 <input
@@ -463,7 +645,9 @@ export default function App() {
                   className="options__input"
                   value={settings.anki.deckName}
                   onChange={(e) =>
-                    void update({ anki: { ...settings.anki, deckName: e.target.value } })
+                    void update({
+                      anki: { ...settings.anki, deckName: e.target.value },
+                    })
                   }
                 />
               </div>
@@ -477,13 +661,13 @@ export default function App() {
                 <input
                   type="text"
                   className="options__input"
-                  value={settings.anki.defaultTags.join(', ')}
+                  value={settings.anki.defaultTags.join(", ")}
                   onChange={(e) =>
                     void update({
                       anki: {
                         ...settings.anki,
                         defaultTags: e.target.value
-                          .split(',')
+                          .split(",")
                           .map((t) => t.trim())
                           .filter(Boolean),
                       },
@@ -505,7 +689,9 @@ export default function App() {
             <SwitchRow
               checked={settings.triggers.contextMenu}
               onChange={(v) =>
-                void update({ triggers: { ...settings.triggers, contextMenu: v } })
+                void update({
+                  triggers: { ...settings.triggers, contextMenu: v },
+                })
               }
               title="Right-click menu"
               help="Right-click any selected text → Add '…' to Hermes."
@@ -513,7 +699,9 @@ export default function App() {
             <SwitchRow
               checked={settings.triggers.floatingButton}
               onChange={(v) =>
-                void update({ triggers: { ...settings.triggers, floatingButton: v } })
+                void update({
+                  triggers: { ...settings.triggers, floatingButton: v },
+                })
               }
               title="Floating action button"
               help="Show an Add button next to text you select on the page."
@@ -526,7 +714,7 @@ export default function App() {
               title="Keyboard shortcut"
               help={
                 <>
-                  Default <code>Ctrl/⌘ + Shift + H</code>. Re-bind in{' '}
+                  Default <code>Ctrl/⌘ + Shift + H</code>. Re-bind in{" "}
                   <code>chrome://extensions/shortcuts</code>.
                 </>
               }
@@ -534,7 +722,9 @@ export default function App() {
             <SwitchRow
               checked={settings.triggers.rememberLastMode}
               onChange={(v) =>
-                void update({ triggers: { ...settings.triggers, rememberLastMode: v } })
+                void update({
+                  triggers: { ...settings.triggers, rememberLastMode: v },
+                })
               }
               title="Remember last mode"
               help="Skip the Generate / Verbatim picker on subsequent captures."
@@ -545,7 +735,12 @@ export default function App() {
           <section className="options__section" id="sec-usage">
             <SectionHead
               title="Usage"
-              hint={<>Approximate API spend. Token counts use a <code>chars ÷ 4</code> heuristic.</>}
+              hint={
+                <>
+                  Approximate API spend. Token counts use a{" "}
+                  <code>chars ÷ 4</code> heuristic.
+                </>
+              }
               right={
                 <Select
                   ariaLabel="Usage month"
@@ -559,8 +754,14 @@ export default function App() {
 
             {usage ? (
               <div className="options__quota">
-                <QuotaCard label="LLM calls" value={usage.llmCalls.toString()} />
-                <QuotaCard label="TTS calls" value={usage.ttsCalls.toString()} />
+                <QuotaCard
+                  label="LLM calls"
+                  value={usage.llmCalls.toString()}
+                />
+                <QuotaCard
+                  label="TTS calls"
+                  value={usage.ttsCalls.toString()}
+                />
                 <QuotaCard
                   label="Tokens · in / out"
                   value={`${formatNum(usage.inputTokens)} / ${formatNum(usage.outputTokens)}`}
@@ -572,7 +773,9 @@ export default function App() {
                 />
               </div>
             ) : (
-              <p className="options__hint">No usage recorded for this month yet.</p>
+              <p className="options__hint">
+                No usage recorded for this month yet.
+              </p>
             )}
           </section>
 
@@ -586,14 +789,18 @@ export default function App() {
               <button
                 type="button"
                 className="options__btn"
-                onClick={() => void downloadBlob(exportJSON(), 'hermes-backup.json')}
+                onClick={() =>
+                  void downloadBlob(exportJSON(), "hermes-backup.json")
+                }
               >
                 Export JSON
               </button>
               <button
                 type="button"
                 className="options__btn"
-                onClick={() => void downloadBlob(exportCSV(), 'hermes-cards.csv')}
+                onClick={() =>
+                  void downloadBlob(exportCSV(), "hermes-cards.csv")
+                }
               >
                 Export CSV
               </button>
@@ -608,29 +815,29 @@ export default function App() {
                 ref={fileRef}
                 type="file"
                 accept="application/json"
-                style={{ display: 'none' }}
+                style={{ display: "none" }}
                 onChange={async (e) => {
                   const f = e.target.files?.[0];
                   if (!f) return;
                   try {
                     const { added, skipped } = await importJSON(await f.text());
                     setImportStatus({
-                      kind: 'ok',
-                      text: `Imported ${added}, skipped ${skipped} duplicate${skipped === 1 ? '' : 's'}.`,
+                      kind: "ok",
+                      text: `Imported ${added}, skipped ${skipped} duplicate${skipped === 1 ? "" : "s"}.`,
                     });
                   } catch (err) {
                     setImportStatus({
-                      kind: 'err',
+                      kind: "err",
                       text: err instanceof Error ? err.message : String(err),
                     });
                   } finally {
-                    e.target.value = '';
+                    e.target.value = "";
                   }
                 }}
               />
               {importStatus && (
                 <span
-                  className={`options__inline-status ${importStatus.kind === 'ok' ? 'is-ok' : 'is-err'}`}
+                  className={`options__inline-status ${importStatus.kind === "ok" ? "is-ok" : "is-err"}`}
                 >
                   {importStatus.text}
                 </span>
@@ -640,15 +847,14 @@ export default function App() {
 
           {/* ─── Developer ─── */}
           <section className="options__section" id="sec-debug">
-            <SectionHead
-              title="Developer"
-              hint="For troubleshooting only."
-            />
+            <SectionHead title="Developer" hint="For troubleshooting only." />
 
             <SwitchRow
               checked={settings.debug.agentTraceVisible}
               onChange={(v) =>
-                void update({ debug: { ...settings.debug, agentTraceVisible: v } })
+                void update({
+                  debug: { ...settings.debug, agentTraceVisible: v },
+                })
               }
               title="Agent trace"
               help="Surfaces each pipeline step in the popover as it runs."
@@ -675,12 +881,15 @@ export default function App() {
                       type="password"
                       className="options__input"
                       autoComplete="off"
-                      value={settings.debug.langsmith.apiKey ?? ''}
+                      value={settings.debug.langsmith.apiKey ?? ""}
                       onChange={(e) =>
                         void update({
                           debug: {
                             ...settings.debug,
-                            langsmith: { ...settings.debug.langsmith, apiKey: e.target.value },
+                            langsmith: {
+                              ...settings.debug.langsmith,
+                              apiKey: e.target.value,
+                            },
                           },
                         })
                       }
@@ -693,12 +902,15 @@ export default function App() {
                     <input
                       type="text"
                       className="options__input"
-                      value={settings.debug.langsmith.project ?? 'hermes'}
+                      value={settings.debug.langsmith.project ?? "hermes"}
                       onChange={(e) =>
                         void update({
                           debug: {
                             ...settings.debug,
-                            langsmith: { ...settings.debug.langsmith, project: e.target.value },
+                            langsmith: {
+                              ...settings.debug.langsmith,
+                              project: e.target.value,
+                            },
                           },
                         })
                       }
@@ -711,7 +923,11 @@ export default function App() {
         </div>
       </main>
 
-      {savedAt && <div key={savedAt} className="options__saved" aria-live="polite">Saved</div>}
+      {savedAt && (
+        <div key={savedAt} className="options__saved" aria-live="polite">
+          Saved
+        </div>
+      )}
     </>
   );
 }
@@ -732,7 +948,11 @@ function SectionHead({
   return (
     <div className="options__section-head">
       <div className="options__section-title">
-        {icon && <span className="options__section-icon" aria-hidden="true">{icon}</span>}
+        {icon && (
+          <span className="options__section-icon" aria-hidden="true">
+            {icon}
+          </span>
+        )}
         <div>
           <h2>{title}</h2>
           {hint && <p className="options__section-hint">{hint}</p>}
@@ -740,12 +960,12 @@ function SectionHead({
       </div>
       {status && (
         <span
-          className={`options__inline-status ${status.ok ? 'is-ok' : 'is-err'}`}
+          className={`options__inline-status ${status.ok ? "is-ok" : "is-err"}`}
           role="status"
         >
           <span className="options__indicator" aria-hidden="true" />
           {status.text}
-          {status.latencyMs ? ` · ${status.latencyMs} ms` : ''}
+          {status.latencyMs ? ` · ${status.latencyMs} ms` : ""}
         </span>
       )}
       {right}
@@ -784,7 +1004,15 @@ function SwitchRow({
   );
 }
 
-function QuotaCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function QuotaCard({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+}) {
   return (
     <div className="options__quota-card">
       <div className="options__quota-label">{label}</div>
@@ -807,7 +1035,7 @@ function labelOf(p: LLMProvider): string {
 async function downloadBlob(p: Promise<Blob>, filename: string): Promise<void> {
   const blob = await p;
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   document.body.appendChild(a);
@@ -831,4 +1059,3 @@ function BrandIcon({ size = 22 }: { size?: number }) {
     </svg>
   );
 }
-

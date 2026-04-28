@@ -68,14 +68,6 @@ async function probeLLM(s: LLMSettings): Promise<{ ok: boolean; message: string 
 }
 
 export async function testTTS(s: TTSSettings): Promise<TestResult> {
-  if (s.provider === 'browser') {
-    const ok = typeof window !== 'undefined' && 'speechSynthesis' in window;
-    return {
-      ok,
-      latencyMs: 0,
-      message: ok ? 'Browser SpeechSynthesis available.' : 'SpeechSynthesis not available.',
-    };
-  }
   if (s.provider === 'edge') {
     try {
       const { value, latencyMs } = await timed(async () => {

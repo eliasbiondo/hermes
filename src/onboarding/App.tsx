@@ -5,7 +5,13 @@ import {
   ensureTTSPermission,
 } from '@/lib/providers/host-permissions';
 import { testLLM, testTTS, type TestResult } from '@/lib/providers/test-connection';
-import { hasRequiredKeys, type LLMProvider, type Settings, type TTSProvider } from '@/types/settings';
+import {
+  hasRequiredKeys,
+  isEdgeAvailableFor,
+  type LLMProvider,
+  type Settings,
+  type TTSProvider,
+} from '@/types/settings';
 
 type Step = 'welcome' | 'llm' | 'tts' | 'try' | 'done';
 
@@ -40,9 +46,8 @@ interface TTSOption {
 }
 
 const TTS_OPTIONS: TTSOption[] = [
-  { value: 'edge',       label: 'Microsoft Edge', tag: 'free · neural' },
-  { value: 'elevenlabs', label: 'ElevenLabs',     tag: 'paid · premium' },
-  { value: 'browser',    label: 'Browser TTS',    tag: 'free · fallback' },
+  { value: 'edge',       label: 'Microsoft Edge', tag: 'free · neural · English only' },
+  { value: 'elevenlabs', label: 'ElevenLabs',     tag: 'paid · multi-language' },
 ];
 
 const EDGE_VOICES = [
@@ -141,10 +146,10 @@ export default function App() {
 function Welcome({ onNext }: { onNext: () => void }) {
   return (
     <section>
-      <h1>Build your English vocabulary, in flow.</h1>
+      <h1>Build vocabulary, in flow.</h1>
       <p className="lede">
-        Hermes turns any English text you select into Anki-ready flashcards
-        (EN → PT-BR), with AI-written context and pronunciation audio. Bring
+        Hermes turns text you select into Anki-ready flashcards in any language
+        pair you set, with AI-written context and pronunciation audio. Bring
         your own keys — nothing routes through us.
       </p>
 
@@ -223,7 +228,7 @@ function LLMStep({
     <section>
       <h1>Pick a language model</h1>
       <p className="lede">
-        This writes English example sentences and translates them to Portuguese.
+        This writes example sentences in your learning language and translates them to your fluent one.
       </p>
 
       <div className="ob__providers">
@@ -326,11 +331,9 @@ function TTSStep({
   const [busy, setBusy] = useState(false);
 
   const onProvider = async (provider: TTSProvider) => {
-    if (provider !== 'browser') await ensureTTSPermission(provider);
+    await ensureTTSPermission(provider);
     const voiceId =
-      provider === 'edge' ? 'en-US-JennyNeural' :
-      provider === 'elevenlabs' ? 'BIvP0GN1cAtSRTxNHnWS' :
-      settings.tts.voiceId;
+      provider === 'edge' ? 'en-US-JennyNeural' : 'BIvP0GN1cAtSRTxNHnWS';
     await update({ tts: { ...settings.tts, provider, voiceId } });
     setTest(null);
   };
@@ -351,12 +354,10 @@ function TTSStep({
   };
 
   const ready =
-    settings.tts.provider === 'browser' ||
     settings.tts.provider === 'edge' ||
     (settings.tts.apiKey ?? '').trim().length > 0;
 
-  // Browser TTS doesn't need a real test — let users continue.
-  const canContinue = test?.ok || (settings.tts.provider === 'browser' && ready);
+  const canContinue = test?.ok || (settings.tts.provider === 'edge' && ready);
 
   return (
     <section>
@@ -366,7 +367,9 @@ function TTSStep({
       </p>
 
       <div className="ob__providers">
-        {TTS_OPTIONS.map((p) => (
+        {TTS_OPTIONS.filter(
+          (p) => p.value !== 'edge' || isEdgeAvailableFor(settings.language.learning),
+        ).map((p) => (
           <label
             key={p.value}
             className={`ob__provider${settings.tts.provider === p.value ? ' is-active' : ''}`}
@@ -476,7 +479,7 @@ function TryStep({ onNext, onBack }: { onNext: () => void; onBack: () => void })
       <ol className="ob__list">
         <li>
           <span className="ob__list-num">1</span>
-          <span className="ob__list-text">Open any English-language article in a new tab.</span>
+          <span className="ob__list-text">Open an article in your learning language in a new tab.</span>
         </li>
         <li>
           <span className="ob__list-num">2</span>

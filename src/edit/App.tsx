@@ -78,20 +78,10 @@ export default function App() {
 
   return (
     <main className="edit">
-      <div className="edit__toolbar">
-        <div className="edit__toolbar-row">
-          <button
-            type="button"
-            className="edit__back"
-            onClick={() => window.close()}
-            aria-label="Close editor"
-          >
-            <ArrowLeftIcon /> Close
-          </button>
-          <div className="edit__toolbar-title">
-            Editing <strong>{card.term}</strong>
-          </div>
-          <div className="edit__toolbar-actions">
+      <header className="edit__header">
+        <div className="edit__header-row">
+          <h1>{card.term}</h1>
+          <div className="edit__header-actions">
             {dirty && (
               <span className="edit__status is-dirty">
                 <span className="edit__status-dot" /> Unsaved
@@ -115,10 +105,6 @@ export default function App() {
             </button>
           </div>
         </div>
-      </div>
-
-      <header className="edit__header">
-        <h1>{card.term}</h1>
         <p className="edit__meta">
           {card.type === 'phrasal_verb' && (
             <span className="edit__chip is-pv">Phrasal verb</span>
@@ -144,7 +130,7 @@ export default function App() {
       <div className="edit__layout">
         <div>
           <section className="edit__section">
-            <h2>Front · English sentence</h2>
+            <h2>Front · sentence</h2>
             <p className="edit__section-hint">
               The sentence shown when the card flips up. Highlight the term Anki will mark.
             </p>
@@ -430,14 +416,6 @@ function clampSpan(span: HighlightSpan, max: number): HighlightSpan {
 function hostname(url: string): string {
   try { return new URL(url).hostname.replace(/^www\./, ''); }
   catch { return ''; }
-}
-
-function ArrowLeftIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M15 6 9 12l6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
 }
 
 function PlayIcon({ size = 14 }: { size?: number }) {

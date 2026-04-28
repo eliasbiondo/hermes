@@ -48,7 +48,7 @@ export function ModePicker({ selectionText, remember, onToggleRemember, onPick }
             <ArrowIcon />
           </span>
           <span className="hermes-choice__hint">
-            Treat the selection as the term. Hermes writes a fresh English sentence around it.
+            Treat the selection as the term. Hermes writes a fresh sentence around it.
           </span>
         </button>
         <button

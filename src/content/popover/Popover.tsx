@@ -145,7 +145,7 @@ export function Popover(props: PopoverProps) {
             <path d="M3.65786 18.9999H0.0349086H0L4.6864 10.725H16.4108L13.3178 16.1864H9.66796L11.6176 12.7438H7.20091L3.65786 18.9999Z" />
             <path d="M14.3421 -5.72205e-05H17.9651H18L13.3136 8.2749H1.58924L4.68223 2.8135H8.33204L6.38241 6.25605H10.7991L14.3421 -5.72205e-05Z" />
           </svg>
-          {isToast ? `Hermes — ${truncate(props.payload.selectionText, 28)}` : 'Hermes'}
+          Hermes
         </strong>
         <button type="button" aria-label="Close" onClick={props.onClose}>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
@@ -190,12 +190,18 @@ export function Popover(props: PopoverProps) {
         />
       )}
 
-      {(mode === 'running' || mode === 'toast') && (
+      {mode === 'running' && (
         <AgentSteps
           events={events}
           done={Boolean(result)}
           {...(result ? { result } : {})}
         />
+      )}
+
+      {mode === 'toast' && (
+        <p className="hermes-popover__toast-msg" role="status">
+          Added <strong>{truncate(props.payload.selectionText, 32)}</strong> to the queue.
+        </p>
       )}
     </div>
   );

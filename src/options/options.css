@@ -66,17 +66,13 @@ code {
 /* ── Topbar ────────────────────────────────────────────────────────── */
 
 .options__topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  position: static;
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 44px;
   padding: 0 24px;
-  background: lab(4.82517% .807941 1.0063 / 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: transparent;
   border-bottom: 1px solid var(--border);
 }
 
@@ -158,7 +154,7 @@ code {
 
 .options__nav {
   position: sticky;
-  top: 80px;
+  top: 24px;
   display: flex;
   flex-direction: column;
   gap: 1px;

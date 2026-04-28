@@ -1,9 +1,35 @@
 // Settings persistence (chrome.storage.local). Never `sync` — N-3 forbids
 // API keys leaving the local machine.
 
-import { DEFAULT_SETTINGS, type Settings } from '@/types/settings';
+import { DEFAULT_SETTINGS, isEdgeAvailableFor, type Settings } from '@/types/settings';
 
 const KEY = 'hermes:settings:v1';
+
+// Stored payloads from previous versions might still contain `provider:
+// "browser"`, which is no longer a valid TTSProvider. Map it to a sane
+// replacement so the new union type stays sound.
+function migrate(stored: Partial<Settings>): Partial<Settings> {
+  const tts = stored.tts as { provider?: string } | undefined;
+  if (tts && tts.provider === 'browser') {
+    const learning =
+      (stored.language?.learning as string | undefined) ??
+      DEFAULT_SETTINGS.language.learning;
+    const fallbackProvider = isEdgeAvailableFor(
+      learning as Settings['language']['learning'],
+    )
+      ? 'edge'
+      : 'elevenlabs';
+    return {
+      ...stored,
+      tts: {
+        ...DEFAULT_SETTINGS.tts,
+        ...(stored.tts as Partial<Settings['tts']>),
+        provider: fallbackProvider,
+      },
+    };
+  }
+  return stored;
+}
 
 function deepMerge<T>(base: T, patch: Partial<T>): T {
   if (typeof base !== 'object' || base === null) return (patch as T) ?? base;
@@ -21,7 +47,7 @@ function deepMerge<T>(base: T, patch: Partial<T>): T {
 
 export async function loadSettings(): Promise<Settings> {
   const got = await chrome.storage.local.get(KEY);
-  const stored = (got[KEY] ?? {}) as Partial<Settings>;
+  const stored = migrate((got[KEY] ?? {}) as Partial<Settings>);
   return deepMerge(DEFAULT_SETTINGS, stored);
 }
 
@@ -38,7 +64,7 @@ export function onSettingsChanged(cb: (s: Settings) => void): () => void {
     area: chrome.storage.AreaName,
   ) => {
     if (area !== 'local' || !(KEY in changes)) return;
-    cb(deepMerge(DEFAULT_SETTINGS, (changes[KEY]?.newValue ?? {}) as Partial<Settings>));
+    cb(deepMerge(DEFAULT_SETTINGS, migrate((changes[KEY]?.newValue ?? {}) as Partial<Settings>)));
   };
   chrome.storage.onChanged.addListener(handler);
   return () => chrome.storage.onChanged.removeListener(handler);
