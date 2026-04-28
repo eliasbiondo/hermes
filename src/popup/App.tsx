@@ -375,19 +375,6 @@ export default function App() {
             </button>
           </div>
         )}
-        {exportState.kind === 'ok' && (
-          <p className="popup__msg is-ok" role="status">
-            <span>{exportState.message}</span>
-            <button
-              type="button"
-              className="popup__msg-dismiss"
-              onClick={() => setExportState({ kind: 'idle' })}
-              aria-label="Dismiss"
-            >
-              ×
-            </button>
-          </p>
-        )}
         {exportState.kind === 'err' && (
           <p className="popup__msg is-err" role="alert">
             <span>Export failed: {exportState.message}</span>
