@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ModePicker } from './ModePicker';
 import { SubSelection } from './SubSelection';
 import { AgentSteps } from './AgentSteps';
@@ -94,7 +94,29 @@ export function Popover(props: PopoverProps) {
   }, [props, mode]);
 
   const isToast = mode === 'toast';
-  const pos = computePosition(props.anchorRect);
+  const [pos, setPos] = useState(() => computePosition(props.anchorRect));
+
+  useLayoutEffect(() => {
+    if (isToast || !ref.current) return;
+    const el = ref.current;
+    const next = computePosition(props.anchorRect, el.offsetWidth, el.offsetHeight);
+    setPos(next);
+    const ro = new ResizeObserver(() => {
+      const r = computePosition(props.anchorRect, el.offsetWidth, el.offsetHeight);
+      setPos(r);
+    });
+    ro.observe(el);
+    const onResize = () => {
+      setPos(computePosition(props.anchorRect, el.offsetWidth, el.offsetHeight));
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onResize, true);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onResize, true);
+    };
+  }, [isToast, props.anchorRect]);
 
   const containerStyle: React.CSSProperties = isToast
     ? {} // .hermes-popover.is-toast handles fixed bottom-right positioning.
@@ -110,8 +132,30 @@ export function Popover(props: PopoverProps) {
       style={containerStyle}
     >
       <header className="hermes-popover__header">
-        <strong>{isToast ? `Hermes — ${truncate(props.payload.selectionText, 32)}` : 'Hermes'}</strong>
-        <button type="button" aria-label="Close" onClick={props.onClose}>×</button>
+        <strong>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            fill="currentColor"
+            className="hermes-popover__brand"
+            aria-hidden="true"
+          >
+            <path d="M12 3 22 21H2L12 3Z" />
+          </svg>
+          {isToast ? `Hermes — ${truncate(props.payload.selectionText, 28)}` : 'Hermes'}
+        </strong>
+        <button type="button" aria-label="Close" onClick={props.onClose}>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path
+              d="M3 3l6 6M9 3l-6 6"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
       </header>
 
       {mode === 'pick' && (
@@ -160,19 +204,26 @@ function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1) + '…' : s;
 }
 
-function computePosition(rect: DOMRect): { top: number; left: number } {
-  const POPOVER_W = 360;
-  const POPOVER_H = 240;
-  const margin = 8;
+function computePosition(
+  rect: DOMRect,
+  width = 380,
+  height = 280,
+): { top: number; left: number } {
+  const edge = 12;     // distance from popover to viewport edge
+  const offset = 20;   // distance from popover to the anchor selection rect
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const w = Math.min(width, vw - edge * 2);
+  const h = Math.min(height, vh - edge * 2);
 
-  const spaceBelow = window.innerHeight - rect.bottom;
-  const placeBelow = spaceBelow >= POPOVER_H + margin;
+  const spaceBelow = vh - rect.bottom;
+  const placeBelow = spaceBelow >= h + offset;
 
-  let top = placeBelow ? rect.bottom + margin : rect.top - POPOVER_H - margin;
-  top = Math.max(margin, Math.min(top, window.innerHeight - POPOVER_H - margin));
+  let top = placeBelow ? rect.bottom + offset : rect.top - h - offset;
+  top = Math.max(edge, Math.min(top, vh - h - edge));
 
-  let left = rect.left + rect.width / 2 - POPOVER_W / 2;
-  left = Math.max(margin, Math.min(left, window.innerWidth - POPOVER_W - margin));
+  let left = rect.left + rect.width / 2 - w / 2;
+  left = Math.max(edge, Math.min(left, vw - w - edge));
 
   return { top, left };
 }

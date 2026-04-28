@@ -13,6 +13,7 @@ import {
   showFloatingButton,
 } from './floating-button';
 import { hidePopover, showPopover } from './popover/popover-host';
+import { togglePanel } from './panel/panel-host';
 import type { CapturePayload } from '@/types/messages';
 import type { CaptureMode, HighlightSpan } from '@/types/card';
 
@@ -42,9 +43,13 @@ interface CaptureTriggerMessage {
   selectionText?: string;
 }
 
-chrome.runtime.onMessage.addListener((msg: CaptureTriggerMessage | { kind: 'settings-changed'; settings: Settings }) => {
+chrome.runtime.onMessage.addListener((msg: CaptureTriggerMessage | { kind: 'settings-changed'; settings: Settings } | { kind: 'toggle-panel' }) => {
   if ('kind' in msg && msg.kind === 'settings-changed') {
     settings = msg.settings;
+    return;
+  }
+  if ('kind' in msg && msg.kind === 'toggle-panel') {
+    togglePanel();
     return;
   }
   if (msg.kind !== 'capture-trigger') return;

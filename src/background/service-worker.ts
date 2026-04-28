@@ -41,6 +41,9 @@ interface PendingRun {
   tts: AgentRunMeta['tts'];
   senderTabId?: number;
   startedAt: number;
+  // When set, the run is a regenerate against an existing card — the result
+  // updates that card in place rather than inserting a fresh one. F-2.8.
+  regenerateCardId?: string;
 }
 const pending = new Map<string, PendingRun>();
 
@@ -89,6 +92,51 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 chrome.commands.onCommand.addListener((command, tab) => {
   if (command !== 'capture-selection' || !tab?.id) return;
   void chrome.tabs.sendMessage(tab.id, { kind: 'capture-trigger', via: 'hotkey' });
+});
+
+// Toolbar icon: toggle the in-page floating panel (Cuponomia-style).
+// On restricted tabs (chrome://, web store, PDFs, etc.) where content scripts
+// can't run, fall back to opening the options page. On normal tabs, retry
+// after programmatically injecting the content script — handles the case
+// where the extension was reloaded but the tab wasn't refreshed.
+chrome.action.onClicked.addListener((tab) => {
+  if (!tab?.id) return;
+  const tabId = tab.id;
+  const restricted =
+    !tab.url ||
+    /^(chrome|edge|about|chrome-extension|chrome-search|view-source):/i.test(tab.url) ||
+    /chrome\.google\.com\/webstore/i.test(tab.url);
+  if (restricted) {
+    void chrome.runtime.openOptionsPage();
+    return;
+  }
+  void (async () => {
+    try {
+      await chrome.tabs.sendMessage(tabId, { kind: 'toggle-panel' });
+      return;
+    } catch {
+      // No content script yet — inject it and retry below.
+    }
+    try {
+      const manifest = chrome.runtime.getManifest();
+      const files = manifest.content_scripts?.[0]?.js ?? [];
+      if (files.length === 0) return;
+      await chrome.scripting.executeScript({ target: { tabId }, files });
+      // Listener registration runs after the script's dynamic chunk imports
+      // resolve. Retry sendMessage with short backoff until it lands.
+      for (let i = 0; i < 10; i += 1) {
+        try {
+          await chrome.tabs.sendMessage(tabId, { kind: 'toggle-panel' });
+          return;
+        } catch {
+          await new Promise((r) => setTimeout(r, 50));
+        }
+      }
+      log.warn('toggle-panel: content script never responded after injection');
+    } catch (e) {
+      log.warn('toggle-panel failed', e instanceof Error ? e.message : String(e));
+    }
+  })();
 });
 
 onSettingsChanged((settings) => {
@@ -166,11 +214,11 @@ chrome.runtime.onMessage.addListener(
       void (async () => {
         log.log('export-anki start', { scope: msg.scope, count: msg.filterIds?.length });
         try {
-          // sql.js (used inside @/anki/export) touches `document` during
-          // wasm bootstrap, which throws in the SW context. The offscreen
-          // doc has DOM globals — but it does NOT have chrome.downloads.
-          // So we split: offscreen builds the .apkg + returns a data: URL,
-          // then the SW does chrome.downloads + marks cards exported.
+          // Offscreen doc both builds the .apkg AND triggers the download
+          // via an <a download="…"> click. Chrome bug 579563 makes
+          // chrome.downloads.download(filename) unreliable on blob URLs —
+          // <a download> reliably honors the filename across versions and
+          // locales. The SW only relays the response and archives cards.
           await ensureOffscreen();
           const settings = await loadSettings();
           const built = (await chrome.runtime.sendMessage({
@@ -179,7 +227,7 @@ chrome.runtime.onMessage.addListener(
             filterIds: msg.filterIds,
             settings,
           })) as
-            | { ok: true; filename: string; dataUrl: string; exportedCardIds: string[] }
+            | { ok: true; filename: string; exportedCardIds: string[] }
             | { ok: false; error: string }
             | undefined;
           if (!built) {
@@ -190,18 +238,16 @@ chrome.runtime.onMessage.addListener(
             sendResponse(built);
             return;
           }
-          log.log(`download starting filename=${built.filename}`);
-          const downloadId = await chrome.downloads.download({
-            url: built.dataUrl,
-            filename: built.filename,
-            saveAs: true,
-          });
-          log.log(`download accepted id=${downloadId} — waiting`);
-          await waitForDownload(downloadId);
-          log.log(`download complete id=${downloadId}`);
+          log.log(`download triggered by offscreen filename=${built.filename}`);
 
-          const { markCardsExported } = await import('@/anki/export');
-          await markCardsExported(built.exportedCardIds);
+          // Archive cards in Dexie inline (not via @/anki/export) so the SW
+          // never loads any chunk that transitively touches `document`.
+          const now = Date.now();
+          await db()
+            .cards.where('id')
+            .anyOf(built.exportedCardIds)
+            .modify({ exportedAt: now, dirtySinceExport: false });
+          chrome.runtime.sendMessage({ kind: 'cards-changed' }).catch(() => undefined);
 
           sendResponse({ ok: true, filename: built.filename, count: built.exportedCardIds.length });
         } catch (e) {
@@ -230,6 +276,7 @@ chrome.runtime.onMessage.addListener(
             termSpan: card.sentenceHighlight,
           } as never,
           undefined,
+          card.id,
         );
         sendResponse({ ok: Boolean(runId), runId, scope: m.scope });
       })();
@@ -254,6 +301,7 @@ async function handleCapture(
     termSpan?: HighlightSpan;
   },
   senderTabId?: number,
+  regenerateCardId?: string,
 ): Promise<string | null> {
   const settings = await loadSettings();
   if (!hasRequiredKeys(settings)) {
@@ -291,6 +339,7 @@ async function handleCapture(
     llm: { provider: settings.llm.provider, model: settings.llm.model },
     tts: { provider: settings.tts.provider, voiceId: settings.tts.voiceId },
     ...(senderTabId !== undefined ? { senderTabId } : {}),
+    ...(regenerateCardId !== undefined ? { regenerateCardId } : {}),
     startedAt: Date.now(),
   });
   broadcastPending();
@@ -342,9 +391,44 @@ async function handleAgentEvent(event: AgentStreamEvent): Promise<void> {
     // enrichment. Partial / failed runs surface in the popover via the
     // streamed `result` event but never produce a stored card.
     if (event.status === 'complete' && event.enrichment) {
-      const card = buildCardFromEnrichment(ctx, event.enrichment);
-      await saveCard(card);
-      // Tell every UI surface to refresh its catalog.
+      // Regenerate path: update the existing card in place so we don't
+      // accumulate duplicates, and so its ankiGuid (and therefore Anki's
+      // notion of the card) survives. F-2.8 / F-6.6.
+      if (ctx.regenerateCardId) {
+        const existing = await db().cards.get(ctx.regenerateCardId);
+        if (existing) {
+          const updated: Card = {
+            ...existing,
+            type: event.enrichment.type,
+            termTranslation: event.enrichment.termTranslation,
+            sentence: event.enrichment.sentence,
+            sentenceHighlight: event.enrichment.sentenceHighlight,
+            sentenceTranslation: event.enrichment.sentenceTranslation,
+            sentenceTranslationHighlight: event.enrichment.sentenceTranslationHighlight,
+            sentenceAudioBlobId: event.enrichment.sentenceAudioBlobId,
+            ...(event.enrichment.termAudioBlobId
+              ? { termAudioBlobId: event.enrichment.termAudioBlobId }
+              : {}),
+            agentRun: {
+              status: 'complete',
+              toolCalls: ctx.toolCalls,
+              llm: ctx.llm,
+              tts: ctx.tts,
+            },
+            // If the card was already in the archive, mark it as edited so
+            // the next export bundles the refresh (F-6.6).
+            ...(existing.exportedAt ? { dirtySinceExport: true } : {}),
+          };
+          await saveCard(updated);
+        } else {
+          // Lost the original (deleted mid-flight) — fall back to inserting.
+          const card = buildCardFromEnrichment(ctx, event.enrichment);
+          await saveCard(card);
+        }
+      } else {
+        const card = buildCardFromEnrichment(ctx, event.enrichment);
+        await saveCard(card);
+      }
       chrome.runtime.sendMessage({ kind: 'cards-changed' }).catch(() => undefined);
     } else {
       log.warn('agent run did not complete; nothing saved', {
@@ -385,23 +469,6 @@ function buildCardFromEnrichment(
     tags: [],
     ankiGuid: ankiGuidFor(id),
   };
-}
-
-function waitForDownload(downloadId: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const listener = (delta: chrome.downloads.DownloadDelta) => {
-      if (delta.id !== downloadId) return;
-      if (delta.state?.current === 'complete') {
-        chrome.downloads.onChanged.removeListener(listener);
-        resolve();
-      } else if (delta.state?.current === 'interrupted') {
-        chrome.downloads.onChanged.removeListener(listener);
-        const reason = delta.error?.current ?? 'unknown';
-        reject(new Error(`Download interrupted: ${reason}`));
-      }
-    };
-    chrome.downloads.onChanged.addListener(listener);
-  });
 }
 
 async function ensureOffscreen(): Promise<void> {

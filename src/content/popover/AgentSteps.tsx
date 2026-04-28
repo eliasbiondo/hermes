@@ -14,12 +14,15 @@ interface Props {
 }
 
 const STEP_LABELS: Record<string, string> = {
-  classify_term: 'Classify',
-  generate_sentence: 'Write sentence',
-  translate_sentence: 'Translate',
-  validate_alignment: 'Check alignment',
-  translate_term: 'Translate term',
-  tts_synthesize: 'Synthesize audio',
+  enrich: 'Drafting card',
+  tts_synthesize: 'Synthesizing audio',
+  tts_synthesize_term: 'Synthesizing term audio',
+  // Keep older labels around so historical queue entries still read nicely.
+  classify_term: 'Classifying',
+  generate_sentence: 'Writing sentence',
+  translate_sentence: 'Translating',
+  validate_alignment: 'Checking alignment',
+  translate_term: 'Translating term',
 };
 
 export function AgentSteps({ events, done, result }: Props) {

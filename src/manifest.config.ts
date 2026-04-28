@@ -14,7 +14,6 @@ export default defineManifest({
 
   action: {
     default_title: 'Hermes',
-    default_popup: 'src/popup/index.html',
   },
   options_page: 'src/options/index.html',
 
@@ -71,7 +70,7 @@ export default defineManifest({
 
   web_accessible_resources: [
     {
-      resources: ['src/offscreen/index.html'],
+      resources: ['src/offscreen/index.html', 'src/popup/index.html'],
       matches: ['<all_urls>'],
     },
   ],

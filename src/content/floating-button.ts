@@ -36,7 +36,7 @@ function ensureHost(): { btn: HTMLButtonElement; host: HTMLElement } {
     btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'hermes-fab';
-    btn.textContent = '+ Hermes';
+    btn.textContent = 'Hermes';
     btn.style.display = 'none';
     btn.addEventListener('mousedown', (e) => {
       // Prevent collapsing the selection before we read it.

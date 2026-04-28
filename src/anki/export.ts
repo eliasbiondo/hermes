@@ -14,7 +14,6 @@ export type ExportScope = 'all' | 'pending' | 'filter';
 export interface BuildResult {
   ok: true;
   filename: string;
-  dataUrl: string;
   exportedCardIds: string[];
 }
 export interface BuildError {
@@ -44,24 +43,27 @@ export async function buildAnkiPackage(
     const { blob, filename, exportedCardIds } = await buildApkg(settings.anki.deckName, cards);
     log.log(`apkg built filename=${filename} size=${blob.size} cards=${exportedCardIds.length} in ${Date.now() - buildStart}ms`);
 
-    const dataUrl = await blobToDataUrl(blob);
-    log.log(`packaged ${(dataUrl.length / 1024).toFixed(0)}kB data: URL`);
+    // Trigger the download from an <a download="…"> element. Chrome bug
+    // 579563 means chrome.downloads.download(filename) is silently dropped
+    // for blob URLs; the native <a download> attribute is reliably honored.
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Revoke after the browser has had time to read the blob URL.
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
 
-    return { ok: true, filename, dataUrl, exportedCardIds };
+    return { ok: true, filename, exportedCardIds };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     log.error(`build failed: ${msg}`);
     return { ok: false, error: msg };
   }
-}
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onerror = () => reject(r.error ?? new Error('FileReader error'));
-    r.onload = () => resolve(r.result as string);
-    r.readAsDataURL(blob);
-  });
 }
 
 // Marks cards as exported. Called from the SW after chrome.downloads finishes.

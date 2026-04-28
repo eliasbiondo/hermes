@@ -130,7 +130,11 @@ export async function buildApkg(
   }
   zip.file('media', JSON.stringify(mediaIndex));
 
-  const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/zip' });
+  // Anki's .apkg is a zip under the hood, but if the blob's MIME is
+  // application/zip Chrome rewrites the download to .zip regardless of the
+  // suggested filename. application/octet-stream forces Chrome to honour
+  // the .apkg extension so Anki recognises the file on double-click.
+  const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/octet-stream' });
   return {
     blob,
     exportedCardIds,
@@ -283,5 +287,9 @@ function slug(s: string): string {
 
 function todayStamp(): string {
   const d = new Date();
-  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}` +
+    `-${pad(d.getHours())}${pad(d.getMinutes())}`
+  );
 }

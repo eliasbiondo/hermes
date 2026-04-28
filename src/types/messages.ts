@@ -93,6 +93,7 @@ export type BackgroundToOffscreen =
       scope: 'all' | 'pending' | 'filter';
       filterIds?: string[];
       settings: Settings;
-    };
+    }
+  | { kind: 'offscreen-revoke-blob'; blobUrl: string };
 export type OffscreenToBackground =
   | { kind: 'agent-event'; event: AgentStreamEvent };

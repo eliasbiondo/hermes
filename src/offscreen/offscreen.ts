@@ -71,6 +71,16 @@ chrome.runtime.onMessage.addListener(
       return true;
     }
 
+    if (msg.kind === 'offscreen-revoke-blob') {
+      try {
+        URL.revokeObjectURL(msg.blobUrl);
+      } catch {
+        /* ignore */
+      }
+      sendResponse({ ok: true });
+      return true;
+    }
+
     return false;
   },
 );

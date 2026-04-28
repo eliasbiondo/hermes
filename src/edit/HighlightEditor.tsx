@@ -47,7 +47,7 @@ export function HighlightEditor({
 
   return (
     <div className="hl-editor">
-      {label && <p className="edit__hint">{label}</p>}
+      {label && <p className="hl-editor__hint">{label}</p>}
       <div
         className="hl-editor__tokens"
         onMouseUp={() => (dragging.current = null)}
@@ -74,7 +74,7 @@ export function HighlightEditor({
           ),
         )}
       </div>
-      {discontig && <p className="is-err">Pick a single contiguous span.</p>}
+      {discontig && <p className="hl-editor__error">Pick a single contiguous span.</p>}
     </div>
   );
 }

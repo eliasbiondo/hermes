@@ -1,73 +1,118 @@
-/* Loaded into the popover Shadow DOM so host page styles can't leak in. */
+/* Hermes — In-page popover (Shadow DOM, total isolation) */
 
 :host, .hermes-mount {
   all: initial;
 }
 
 .hermes-popover {
+  /* Local design tokens — kept inside the Shadow DOM but mirrored from the
+     popup/options palettes so all three surfaces feel like one product. */
+  --hp-bg: lab(4.82517% 0.807941 1.0063);
+  --hp-card: lab(8% 0 0);
+  --hp-fg: lab(86% 0 0);
+  --hp-fg-muted: lab(60% 0 0);
+  --hp-fg-faint: lab(45% 0 0);
+  --hp-border: lab(100% 0 0 / 0.07);
+  --hp-border-strong: lab(100% 0 0 / 0.18);
+  --hp-radius: 12px;
+  --hp-radius-sm: 7px;
+
   position: fixed;
-  width: 360px;
-  background: #fafafa;
-  color: #1a1a1a;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  font: 14px/1.4 -apple-system, system-ui, sans-serif;
-  padding: 12px 14px;
+  width: 380px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  background: var(--hp-bg);
+  color: var(--hp-fg);
+  border: 1px solid var(--hp-border-strong);
+  border-radius: var(--hp-radius);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 18px 48px rgba(0, 0, 0, 0.55);
+  font: 13px/1.5 -apple-system, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.005em;
+  padding: 16px;
   pointer-events: auto;
   z-index: 2147483647;
 }
 
-/* Compact toast variant — anchored to bottom-right so it doesn't block the
- * page while the agent processes the run. */
 .hermes-popover.is-toast {
   top: auto !important;
   left: auto !important;
   right: 16px;
   bottom: 16px;
-  width: 280px;
-  padding: 10px 12px;
+  width: 320px;
+  padding: 12px 14px;
+  border-radius: var(--hp-radius);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hermes-popover, .hermes-fab {
-    transition: none !important;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  .hermes-popover {
-    background: #1a1a1a;
-    color: #f5f5f5;
-    border-color: #2a2a2a;
-  }
+  .hermes-popover, .hermes-fab { transition: none !important; }
 }
 
 .hermes-popover__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 14px;
+}
+
+.hermes-popover__header strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  font-size: 12.5px;
+  letter-spacing: -0.005em;
+  color: var(--hp-fg);
+}
+
+.hermes-popover__brand {
+  color: var(--hp-fg);
+  display: block;
 }
 
 .hermes-popover__header button {
   background: transparent;
   border: 0;
-  color: inherit;
-  font-size: 18px;
+  color: var(--hp-fg-muted);
   cursor: pointer;
   line-height: 1;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.12s, background 0.12s;
 }
+
+.hermes-popover__header button:hover {
+  color: var(--hp-fg);
+  background: lab(100% 0 0 / 0.06);
+}
+
+.hermes-popover__header button svg { display: block; }
 
 .hermes-popover__step { display: block; }
 
 .hermes-popover__selection {
-  font-size: 13px;
-  color: #6b6b6b;
-  background: rgba(127, 127, 127, 0.08);
-  padding: 6px 8px;
-  border-radius: 6px;
-  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--hp-fg-muted);
+  background: var(--hp-card);
+  border: 1px solid var(--hp-border);
+  padding: 12px 14px;
+  border-radius: var(--hp-radius-sm);
+  margin: 0;
+  margin-bottom: 10px !important;
+  line-height: 1.55;
+  max-height: 96px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
 .hermes-popover__choices {
@@ -76,73 +121,170 @@
 }
 
 .hermes-choice {
+  position: relative;
   display: block;
   text-align: left;
-  background: white;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 10px 12px;
+  background: var(--hp-card);
+  border: 1px solid var(--hp-border);
+  border-radius: var(--hp-radius-sm);
+  padding: 12px 14px;
   cursor: pointer;
   color: inherit;
   font: inherit;
+  transition: border-color 0.12s, background 0.12s, transform 0.05s;
 }
 
-@media (prefers-color-scheme: dark) {
-  .hermes-choice { background: #222; border-color: #333; }
+.hermes-choice:hover {
+  border-color: var(--hp-border-strong);
+  background: lab(100% 0 0 / 0.04);
 }
 
-.hermes-choice:hover { border-color: #2563eb; }
-.hermes-choice:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
+.hermes-choice:focus-visible {
+  outline: none;
+  border-color: var(--hp-fg);
+  box-shadow: 0 0 0 3px lab(100% 0 0 / 0.06);
+}
 
-.hermes-choice__title { display: block; font-weight: 600; margin-bottom: 4px; }
-.hermes-choice__hint  { display: block; color: #6b6b6b; font-size: 12px; }
+.hermes-choice:active { transform: translateY(1px); }
+
+.hermes-choice__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  font-size: 12.5px;
+  color: var(--hp-fg);
+  letter-spacing: -0.005em;
+}
+
+.hermes-choice__title > span:first-child { flex: 1; }
+
+.hermes-choice__arrow {
+  flex-shrink: 0;
+  color: var(--hp-fg-faint);
+  transition: transform 0.12s, color 0.12s;
+}
+
+.hermes-choice:hover .hermes-choice__arrow {
+  color: var(--hp-fg);
+  transform: translateX(2px);
+}
+
+.hermes-choice__hint {
+  display: block;
+  color: var(--hp-fg-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
 
 .hermes-popover__remember {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 12px;
-  font-size: 12px;
-  color: #6b6b6b;
+  gap: 9px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hp-border);
+  font-size: 11.5px;
+  color: var(--hp-fg-muted);
   cursor: pointer;
+  user-select: none;
+}
+
+.hermes-popover__remember:hover { color: var(--hp-fg); }
+
+/* shadcn-style checkbox embedded in the Shadow DOM */
+.hermes-checkbox {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.hermes-checkbox input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.hermes-checkbox__box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid var(--hp-border-strong);
+  background: transparent;
+  color: transparent;
+  transition: border-color 0.12s, background 0.12s, color 0.12s, box-shadow 0.12s;
+  pointer-events: none;
+}
+
+.hermes-popover__remember:hover .hermes-checkbox__box {
+  border-color: lab(100% 0 0 / 0.32);
+}
+
+.hermes-checkbox.is-checked .hermes-checkbox__box {
+  background: var(--hp-fg);
+  border-color: var(--hp-fg);
+  color: var(--hp-bg);
+}
+
+.hermes-checkbox input:focus-visible + .hermes-checkbox__box {
+  box-shadow: 0 0 0 3px lab(100% 0 0 / 0.1);
 }
 
 .hermes-popover__hint {
   font-size: 12px;
-  color: #6b6b6b;
+  color: var(--hp-fg-muted);
   margin: 0 0 8px;
+  line-height: 1.5;
 }
 
 .hermes-popover__warn {
   font-size: 12px;
-  color: #b45309;
-  background: rgba(234, 179, 8, 0.12);
-  border: 1px solid rgba(234, 179, 8, 0.45);
-  padding: 6px 8px;
-  border-radius: 6px;
+  color: lab(78% 6 75);
+  background: lab(78% 6 75 / 0.08);
+  border: 1px solid lab(78% 6 75 / 0.28);
+  padding: 8px 10px;
+  border-radius: 7px;
   margin: 8px 0 0;
+  line-height: 1.45;
 }
 
 .hermes-tokens {
   user-select: none;
-  border: 1px solid #e5e5e5;
-  border-radius: 6px;
-  padding: 8px;
-  line-height: 1.8;
+  border: 1px solid var(--hp-border);
+  border-radius: var(--hp-radius-sm);
+  padding: 10px 12px;
+  line-height: 1.85;
+  background: var(--hp-card);
 }
 
 .hermes-token {
   cursor: pointer;
-  padding: 1px 2px;
+  padding: 1px 3px;
   border-radius: 3px;
+  transition: background 0.1s;
+  color: var(--hp-fg);
 }
+
+.hermes-token:hover { background: lab(100% 0 0 / 0.08); }
 
 .hermes-token.is-selected {
-  background: #fff3a3;
-  color: #1a1a1a;
+  background: var(--hp-fg);
+  color: var(--hp-bg);
 }
 
-.hermes-sep { white-space: pre; }
+.hermes-sep { white-space: pre; color: var(--hp-fg-muted); }
 
 .hermes-popover__footer {
   display: flex;
@@ -153,18 +295,31 @@
 
 .hermes-popover__footer button {
   font: inherit;
-  border: 1px solid #e5e5e5;
+  font-weight: 500;
+  font-size: 12px;
+  border: 1px solid var(--hp-border);
   background: transparent;
-  color: inherit;
-  padding: 6px 12px;
-  border-radius: 6px;
+  color: var(--hp-fg);
+  padding: 7px 12px;
+  border-radius: var(--hp-radius-sm);
   cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.hermes-popover__footer button:hover:not(:disabled) {
+  background: lab(100% 0 0 / 0.04);
+  border-color: var(--hp-border-strong);
 }
 
 .hermes-popover__footer button.is-primary {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
+  background: var(--hp-fg);
+  color: var(--hp-bg);
+  border-color: var(--hp-fg);
+}
+
+.hermes-popover__footer button.is-primary:hover:not(:disabled) {
+  background: lab(95% 0 0);
+  border-color: lab(95% 0 0);
 }
 
 .hermes-popover__footer button:disabled {
@@ -172,7 +327,7 @@
   cursor: not-allowed;
 }
 
-/* Streaming agent step list (F-2.3) */
+/* Streaming step list */
 .hermes-steps {
   list-style: none;
   margin: 0;
@@ -182,59 +337,102 @@
 .hermes-step {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  font-size: 13px;
-  border-bottom: 1px dashed rgba(127, 127, 127, 0.18);
+  gap: 10px;
+  padding: 7px 0;
+  font-size: 12.5px;
+  border-bottom: 1px solid var(--hp-border);
+  color: var(--hp-fg);
 }
 
 .hermes-step:last-child { border-bottom: 0; }
 
 .hermes-step__dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: rgba(127, 127, 127, 0.35);
-  flex: 0 0 8px;
+  background: var(--hp-fg-faint);
+  flex: 0 0 7px;
 }
 
 .hermes-step.is-running .hermes-step__dot {
-  background: #2563eb;
+  background: var(--hp-fg);
   animation: hermesPulse 1.2s ease-in-out infinite;
 }
 
-.hermes-step.is-done .hermes-step__dot { background: #16a34a; }
-.hermes-step.is-failed .hermes-step__dot { background: #dc2626; }
+.hermes-step.is-done .hermes-step__dot { background: lab(72% -45 40); }
+.hermes-step.is-failed .hermes-step__dot { background: lab(63% 60 31); }
 
 .hermes-step__label { flex: 1; }
-.hermes-step__time { color: #6b6b6b; font-size: 11px; }
-.hermes-step__err  { color: #dc2626; font-size: 11px; }
+.hermes-step__time {
+  color: var(--hp-fg-faint);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+.hermes-step__err {
+  color: lab(63% 60 31);
+  font-size: 10.5px;
+}
 
 @keyframes hermesPulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50%      { transform: scale(1.4); opacity: 0.55; }
+  0%, 100% { transform: scale(1);   opacity: 1; }
+  50%      { transform: scale(1.5); opacity: 0.55; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .hermes-step.is-running .hermes-step__dot { animation: none; }
 }
 
-.is-ok  { color: #16a34a; }
-.is-err { color: #dc2626; }
+.is-ok  { color: lab(72% -45 40); }
+.is-err { color: lab(63% 60 31); }
 
-/* Floating action button (F-1.2) */
+.hermes-popover__step p {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.hermes-popover__step p.is-ok { color: lab(72% -45 40); }
+.hermes-popover__step p.is-err { color: lab(63% 60 31); }
+
+/* Floating action button */
 .hermes-fab {
   position: fixed;
   z-index: 2147483646;
-  background: #1a1a1a;
-  color: #fafafa;
-  border: 0;
+  background: lab(7% 0 0);
+  color: lab(95% 0 0);
+  border: 1px solid lab(100% 0 0 / 0.18);
   border-radius: 999px;
-  padding: 6px 12px;
-  font: 12px/1 -apple-system, system-ui, sans-serif;
-  font-weight: 600;
+  padding: 5px 12px 5px 8px;
+  font: 11.5px/1 -apple-system, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.005em;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 8px 24px rgba(0, 0, 0, 0.45);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: background 0.12s, border-color 0.12s, transform 0.12s;
+  height: 26px;
 }
 
-.hermes-fab:hover { background: #2563eb; }
+.hermes-fab:hover {
+  background: lab(11% 0 0);
+  border-color: lab(100% 0 0 / 0.28);
+  transform: translateY(-1px);
+}
+
+.hermes-fab::before {
+  content: '+';
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: lab(100% 0 0 / 0.1);
+  color: lab(95% 0 0);
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1;
+}

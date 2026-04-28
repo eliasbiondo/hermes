@@ -28,6 +28,7 @@ export default defineConfig({
         offscreen: fileURLToPath(new URL('./src/offscreen/index.html', import.meta.url)),
         onboarding: fileURLToPath(new URL('./src/onboarding/index.html', import.meta.url)),
         edit: fileURLToPath(new URL('./src/edit/index.html', import.meta.url)),
+        popup: fileURLToPath(new URL('./src/popup/index.html', import.meta.url)),
       },
     },
   },
