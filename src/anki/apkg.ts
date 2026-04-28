@@ -138,7 +138,7 @@ export async function buildApkg(
   return {
     blob,
     exportedCardIds,
-    filename: `${slug(deckName)}-${todayStamp()}.apkg`,
+    filename: `export-${todayStamp()}.apkg`,
   };
 }
 
@@ -279,10 +279,6 @@ function fieldChecksum(s: string): number {
   let h = 0;
   for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return h;
-}
-
-function slug(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'hermes';
 }
 
 function todayStamp(): string {
