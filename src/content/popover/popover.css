@@ -1,0 +1,240 @@
+/* Loaded into the popover Shadow DOM so host page styles can't leak in. */
+
+:host, .hermes-mount {
+  all: initial;
+}
+
+.hermes-popover {
+  position: fixed;
+  width: 360px;
+  background: #fafafa;
+  color: #1a1a1a;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  font: 14px/1.4 -apple-system, system-ui, sans-serif;
+  padding: 12px 14px;
+  pointer-events: auto;
+  z-index: 2147483647;
+}
+
+/* Compact toast variant — anchored to bottom-right so it doesn't block the
+ * page while the agent processes the run. */
+.hermes-popover.is-toast {
+  top: auto !important;
+  left: auto !important;
+  right: 16px;
+  bottom: 16px;
+  width: 280px;
+  padding: 10px 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hermes-popover, .hermes-fab {
+    transition: none !important;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .hermes-popover {
+    background: #1a1a1a;
+    color: #f5f5f5;
+    border-color: #2a2a2a;
+  }
+}
+
+.hermes-popover__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.hermes-popover__header button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.hermes-popover__step { display: block; }
+
+.hermes-popover__selection {
+  font-size: 13px;
+  color: #6b6b6b;
+  background: rgba(127, 127, 127, 0.08);
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin: 0 0 12px;
+}
+
+.hermes-popover__choices {
+  display: grid;
+  gap: 8px;
+}
+
+.hermes-choice {
+  display: block;
+  text-align: left;
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+@media (prefers-color-scheme: dark) {
+  .hermes-choice { background: #222; border-color: #333; }
+}
+
+.hermes-choice:hover { border-color: #2563eb; }
+.hermes-choice:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
+
+.hermes-choice__title { display: block; font-weight: 600; margin-bottom: 4px; }
+.hermes-choice__hint  { display: block; color: #6b6b6b; font-size: 12px; }
+
+.hermes-popover__remember {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: #6b6b6b;
+  cursor: pointer;
+}
+
+.hermes-popover__hint {
+  font-size: 12px;
+  color: #6b6b6b;
+  margin: 0 0 8px;
+}
+
+.hermes-popover__warn {
+  font-size: 12px;
+  color: #b45309;
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.45);
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin: 8px 0 0;
+}
+
+.hermes-tokens {
+  user-select: none;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  padding: 8px;
+  line-height: 1.8;
+}
+
+.hermes-token {
+  cursor: pointer;
+  padding: 1px 2px;
+  border-radius: 3px;
+}
+
+.hermes-token.is-selected {
+  background: #fff3a3;
+  color: #1a1a1a;
+}
+
+.hermes-sep { white-space: pre; }
+
+.hermes-popover__footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  gap: 8px;
+}
+
+.hermes-popover__footer button {
+  font: inherit;
+  border: 1px solid #e5e5e5;
+  background: transparent;
+  color: inherit;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.hermes-popover__footer button.is-primary {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.hermes-popover__footer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Streaming agent step list (F-2.3) */
+.hermes-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hermes-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 13px;
+  border-bottom: 1px dashed rgba(127, 127, 127, 0.18);
+}
+
+.hermes-step:last-child { border-bottom: 0; }
+
+.hermes-step__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(127, 127, 127, 0.35);
+  flex: 0 0 8px;
+}
+
+.hermes-step.is-running .hermes-step__dot {
+  background: #2563eb;
+  animation: hermesPulse 1.2s ease-in-out infinite;
+}
+
+.hermes-step.is-done .hermes-step__dot { background: #16a34a; }
+.hermes-step.is-failed .hermes-step__dot { background: #dc2626; }
+
+.hermes-step__label { flex: 1; }
+.hermes-step__time { color: #6b6b6b; font-size: 11px; }
+.hermes-step__err  { color: #dc2626; font-size: 11px; }
+
+@keyframes hermesPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.4); opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hermes-step.is-running .hermes-step__dot { animation: none; }
+}
+
+.is-ok  { color: #16a34a; }
+.is-err { color: #dc2626; }
+
+/* Floating action button (F-1.2) */
+.hermes-fab {
+  position: fixed;
+  z-index: 2147483646;
+  background: #1a1a1a;
+  color: #fafafa;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: 12px/1 -apple-system, system-ui, sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.hermes-fab:hover { background: #2563eb; }

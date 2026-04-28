@@ -1,0 +1,150 @@
+:root {
+  --bg: #fafafa;
+  --fg: #1a1a1a;
+  --muted: #6b6b6b;
+  --accent: #2563eb;
+  --border: #e5e5e5;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a1a;
+    --fg: #f5f5f5;
+    --muted: #a0a0a0;
+    --border: #2a2a2a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: 15px;
+  color: var(--fg);
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+.ob {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 48px 32px 64px;
+}
+
+.ob h1 {
+  font-size: 24px;
+  margin: 0 0 16px;
+}
+
+.ob p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.ob__stepper {
+  list-style: none;
+  display: flex;
+  gap: 8px;
+  padding: 0;
+  margin: 0 0 32px;
+  font-size: 13px;
+  color: var(--muted);
+  counter-reset: step;
+}
+
+.ob__stepper li {
+  flex: 1;
+  text-align: center;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 8px;
+  counter-increment: step;
+}
+
+.ob__stepper li::before {
+  content: counter(step) '. ';
+}
+
+.ob__stepper li.is-active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.ob__step {
+  background: var(--bg);
+}
+
+.ob__field {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  align-items: center;
+  margin: 14px 0;
+}
+
+.ob__field > span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ob__field input,
+.ob__field select {
+  font: inherit;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  width: 100%;
+}
+
+.ob__field input:focus,
+.ob__field select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.ob__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.ob__actions button {
+  font: inherit;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.ob__actions button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ob__actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ob__actions button.is-primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  margin-left: auto;
+}
+
+.ob__actions button.is-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+  color: white;
+}
+
+.ob__list { padding-left: 18px; line-height: 1.7; color: var(--muted); }
+.ob__hint { color: var(--muted); font-size: 13px; }
+.is-ok  { color: #16a34a; }
+.is-err { color: #dc2626; }

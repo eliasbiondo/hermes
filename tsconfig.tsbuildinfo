@@ -1,0 +1,1 @@
+{"root":["./src/manifest.config.ts","./src/background/service-worker.ts","./src/content/content-script.ts","./src/lib/log.ts","./src/lib/uuid.ts","./src/offscreen/offscreen.ts","./src/options/App.tsx","./src/options/main.tsx","./src/popup/App.tsx","./src/popup/main.tsx","./src/types/card.ts","./src/types/messages.ts","./src/types/settings.ts"],"errors":true,"version":"5.9.3"}
