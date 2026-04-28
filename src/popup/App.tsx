@@ -697,13 +697,14 @@ function BrandIcon({ size = 18 }: { size?: number }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
+      viewBox="0 0 18 19"
       width={size}
       height={size}
       fill="currentColor"
       aria-hidden="true"
     >
-      <path d="M12 3 22 21H2L12 3Z" />
+      <path d="M3.65786 18.9999H0.0349086H0L4.6864 10.725H16.4108L13.3178 16.1864H9.66796L11.6176 12.7438H7.20091L3.65786 18.9999Z" />
+      <path d="M14.3421 -5.72205e-05H17.9651H18L13.3136 8.2749H1.58924L4.68223 2.8135H8.33204L6.38241 6.25605H10.7991L14.3421 -5.72205e-05Z" />
     </svg>
   );
 }

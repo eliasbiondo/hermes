@@ -121,8 +121,13 @@ code {
   background: currentColor;
 }
 
-.options__topbar-status.is-ready { color: var(--success); }
-.options__topbar-status.is-blocked { color: var(--warning); }
+.options__topbar-status.is-ready { color: var(--foreground); }
+.options__topbar-status.is-ready .options__topbar-dot { background: var(--foreground); }
+
+.options__topbar-status.is-blocked { color: var(--muted-foreground); }
+.options__topbar-status.is-blocked .options__topbar-dot {
+  background: var(--muted-foreground);
+}
 
 /* ── Layout ────────────────────────────────────────────────────────── */
 
@@ -270,35 +275,14 @@ code {
 }
 
 .options__section-title {
-  display: grid;
-  grid-template-columns: 28px 1fr;
-  align-items: center;
-  column-gap: 12px;
-  row-gap: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   flex: 1;
   min-width: 0;
 }
 
-.options__section-icon {
-  grid-row: span 2;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius);
-  background: var(--card);
-  border: 1px solid var(--border);
-  color: var(--foreground);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  align-self: center;
-}
-
-.options__section-icon svg {
-  display: block;
-  width: 14px;
-  height: 14px;
-}
+.options__section-icon { display: none; }
 
 .options__section h2 {
   font-size: 14px;
@@ -307,7 +291,6 @@ code {
   letter-spacing: -0.005em;
   line-height: 1.2;
   color: var(--foreground);
-  align-self: end;
 }
 
 .options__section-hint {
@@ -316,7 +299,6 @@ code {
   margin: 0;
   line-height: 1.5;
   max-width: 540px;
-  align-self: start;
 }
 
 /* ── Form rows ─────────────────────────────────────────────────────── */
@@ -519,7 +501,7 @@ code {
   letter-spacing: -0.002em;
 }
 
-.is-ok  { color: var(--success); }
+.is-ok  { color: var(--foreground); }
 .is-err { color: var(--danger); }
 
 .options__indicator {
@@ -578,35 +560,42 @@ code {
 
 .options__quota {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
 }
 
 .options__quota-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   background: transparent;
-  padding: 14px 16px;
-  border-right: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px 16px;
+  min-height: 88px;
+  transition: border-color 0.12s, background 0.12s;
 }
 
-.options__quota-card:last-child { border-right: 0; }
+.options__quota-card:hover {
+  border-color: var(--border-strong);
+  background: lab(100% 0 0 / 0.02);
+}
 
 .options__quota-label {
   font-size: 10.5px;
   color: var(--muted-foreground);
   font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
 }
 
 .options__quota-value {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 500;
   letter-spacing: -0.025em;
   color: var(--foreground);
-  margin-top: 6px;
+  margin: 0;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
@@ -614,8 +603,9 @@ code {
 .options__quota-sub {
   font-size: 10.5px;
   color: var(--muted-foreground);
-  margin-top: 4px;
+  margin: 0;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
 }
 
 .options__hint {
@@ -653,7 +643,7 @@ code {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--success);
+  background: var(--foreground);
 }
 
 @keyframes hermesFade {

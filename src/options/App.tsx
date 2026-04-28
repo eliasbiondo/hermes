@@ -241,7 +241,6 @@ export default function App() {
           {/* ─── LLM ─── */}
           <section className="options__section" id="sec-llm">
             <SectionHead
-              icon={<IcoLlm size={14} />}
               title="Language model"
               hint="Writes example sentences and translates EN → PT-BR."
               status={llmTest && {
@@ -321,7 +320,6 @@ export default function App() {
           {/* ─── TTS ─── */}
           <section className="options__section" id="sec-tts">
             <SectionHead
-              icon={<IcoTts size={14} />}
               title="Voice"
               hint="Generates the pronunciation embedded in every Anki card."
               status={ttsTest && {
@@ -450,7 +448,6 @@ export default function App() {
           {/* ─── Anki ─── */}
           <section className="options__section" id="sec-anki">
             <SectionHead
-              icon={<IcoAnki size={14} />}
               title="Anki export"
               hint={<>Where your cards land. Note type is locked to <code>Hermes Card</code>.</>}
             />
@@ -501,7 +498,6 @@ export default function App() {
           {/* ─── Capture ─── */}
           <section className="options__section" id="sec-capture">
             <SectionHead
-              icon={<IcoCapture size={14} />}
               title="Capture"
               hint="Pick how you start a capture. All work side-by-side."
             />
@@ -548,7 +544,6 @@ export default function App() {
           {/* ─── Usage ─── */}
           <section className="options__section" id="sec-usage">
             <SectionHead
-              icon={<IcoUsage size={14} />}
               title="Usage"
               hint={<>Approximate API spend. Token counts use a <code>chars ÷ 4</code> heuristic.</>}
               right={
@@ -584,7 +579,6 @@ export default function App() {
           {/* ─── Backup ─── */}
           <section className="options__section" id="sec-backup">
             <SectionHead
-              icon={<IcoBackup size={14} />}
               title="Backup &amp; restore"
               hint="JSON is full-fidelity (highlights, source metadata). CSV is for inspection."
             />
@@ -647,7 +641,6 @@ export default function App() {
           {/* ─── Developer ─── */}
           <section className="options__section" id="sec-debug">
             <SectionHead
-              icon={<IcoDebug size={14} />}
               title="Developer"
               hint="For troubleshooting only."
             />
@@ -827,92 +820,15 @@ function BrandIcon({ size = 22 }: { size?: number }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
+      viewBox="0 0 18 19"
       width={size}
       height={size}
       fill="currentColor"
       aria-hidden="true"
     >
-      <path d="M12 3 22 21H2L12 3Z" />
+      <path d="M3.65786 18.9999H0.0349086H0L4.6864 10.725H16.4108L13.3178 16.1864H9.66796L11.6176 12.7438H7.20091L3.65786 18.9999Z" />
+      <path d="M14.3421 -5.72205e-05H17.9651H18L13.3136 8.2749H1.58924L4.68223 2.8135H8.33204L6.38241 6.25605H10.7991L14.3421 -5.72205e-05Z" />
     </svg>
   );
 }
 
-interface IcoProps { size?: number }
-
-function svgProps(size: number) {
-  return {
-    xmlns: 'http://www.w3.org/2000/svg',
-    viewBox: '0 0 24 24',
-    width: size,
-    height: size,
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.6,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    'aria-hidden': true,
-  };
-}
-
-function IcoLlm({ size = 22 }: IcoProps) {
-  return (
-    <svg {...svgProps(size)}>
-      <path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3Z" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  );
-}
-
-function IcoTts({ size = 22 }: IcoProps) {
-  return (
-    <svg {...svgProps(size)}>
-      <path d="M3 10v4h4l5 4V6L7 10H3Z" />
-      <path d="M16 8c1.5 1 2.5 2.5 2.5 4s-1 3-2.5 4M19 5c2.5 1.5 4 4 4 7s-1.5 5.5-4 7" />
-    </svg>
-  );
-}
-
-function IcoAnki({ size = 22 }: IcoProps) {
-  return (
-    <svg {...svgProps(size)}>
-      <rect x="3" y="6" width="14" height="14" rx="2" />
-      <path d="M7 4h12a2 2 0 0 1 2 2v12" />
-      <path d="M7 11h6M7 15h4" />
-    </svg>
-  );
-}
-
-function IcoCapture({ size = 22 }: IcoProps) {
-  return (
-    <svg {...svgProps(size)}>
-      <path d="M4 7V5a1 1 0 0 1 1-1h2M20 7V5a1 1 0 0 0-1-1h-2M4 17v2a1 1 0 0 0 1 1h2M20 17v2a1 1 0 0 1-1 1h-2" />
-      <rect x="8" y="9" width="8" height="6" rx="1.5" />
-    </svg>
-  );
-}
-
-function IcoUsage({ size = 22 }: IcoProps) {
-  return (
-    <svg {...svgProps(size)}>
-      <path d="M4 20V11M10 20V4M16 20v-7M22 20H2" />
-    </svg>
-  );
-}
-
-function IcoBackup({ size = 22 }: IcoProps) {
-  return (
-    <svg {...svgProps(size)}>
-      <path d="M12 4v10M7 9l5-5 5 5M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
-    </svg>
-  );
-}
-
-function IcoDebug({ size = 22 }: IcoProps) {
-  return (
-    <svg {...svgProps(size)}>
-      <rect x="6" y="9" width="12" height="12" rx="6" />
-      <path d="M9 4h6m-3 0v3M3 13h3M21 13h-3M3 17h3M21 17h-3" />
-    </svg>
-  );
-}
