@@ -2,8 +2,27 @@
   "name": "hermes",
   "private": true,
   "version": "0.1.0",
-  "description": "Browser extension that turns selected English text into Anki-ready flashcards (EN→PT-BR) with AI context and TTS audio.",
+  "description": "Browser extension that turns selected text into Anki-ready flashcards in any language pair, with AI-written context and TTS audio.",
   "type": "module",
+  "license": "MIT",
+  "author": "Elias Biondo",
+  "homepage": "https://github.com/eliasbiondo/hermes",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eliasbiondo/hermes.git"
+  },
+  "bugs": {
+    "url": "https://github.com/eliasbiondo/hermes/issues"
+  },
+  "keywords": [
+    "anki",
+    "flashcards",
+    "browser-extension",
+    "vocabulary",
+    "language-learning",
+    "manifest-v3",
+    "chrome-extension"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
