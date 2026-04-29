@@ -43,7 +43,7 @@ sequenceDiagram
     participant User as User<br/>(highlights text)
     participant CS as Content script<br/>(page)
     participant SW as Service worker
-    participant Off as Offscreen<br/>document
+    participant Offscr as Offscreen<br/>document
     participant LLM as LLM provider
     participant TTS as TTS provider
     participant DB as Dexie<br/>(IndexedDB)
@@ -54,26 +54,26 @@ sequenceDiagram
     CS-->>User: floating "+" button + popover
     User->>CS: pick mode (Generate / Verbatim)
     CS->>SW: capture payload
-    SW->>Off: run-agent
+    SW->>Offscr: run-agent
 
-    Off->>LLM: enrich (sentence + translation, JSON schema)
-    LLM-->>Off: draft
+    Offscr->>LLM: enrich (sentence + translation, JSON schema)
+    LLM-->>Offscr: draft
 
     alt schema or echo-guard fails
-        Off->>LLM: retry with violation hint
-        LLM-->>Off: draft
-        Note over Off,LLM: up to 3 attempts
+        Offscr->>LLM: retry with violation hint
+        LLM-->>Offscr: draft
+        Note over Offscr,LLM: up to 3 attempts
     end
 
-    Off->>TTS: synthesize sentence audio
-    TTS-->>Off: mp3
+    Offscr->>TTS: synthesize sentence audio
+    TTS-->>Offscr: mp3
     opt term audio enabled
-        Off->>TTS: synthesize term audio
-        TTS-->>Off: mp3
+        Offscr->>TTS: synthesize term audio
+        TTS-->>Offscr: mp3
     end
 
-    Off->>DB: save card + audio cache
-    Off->>SW: agent-event (result)
+    Offscr->>DB: save card + audio cache
+    Offscr->>SW: agent-event (result)
     SW-->>CS: collapse popover to toast
 
     User->>Panel: click toolbar icon
@@ -84,11 +84,11 @@ sequenceDiagram
 
     User->>Panel: Export N to Anki
     Panel->>SW: export-anki
-    SW->>Off: build .apkg (sql.js + JSZip)
-    Off->>DB: read cards + audio bytes
-    DB-->>Off: blobs
-    Off->>Off: <a download> click
-    Off-->>User: .apkg saved
+    SW->>Offscr: build .apkg (sql.js + JSZip)
+    Offscr->>DB: read cards + audio bytes
+    DB-->>Offscr: blobs
+    Offscr->>Offscr: <a download> click
+    Offscr-->>User: .apkg saved
     User->>Anki: import .apkg
     Anki-->>User: ready for SRS
 ```
