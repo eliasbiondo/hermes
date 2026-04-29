@@ -23,7 +23,7 @@ Hermes is a Chromium extension that builds vocabulary flashcards while you read.
 
 ## What's in the box
 
-- **Floating in‑page panel.** No Chrome popup window — the panel renders inside the active tab, like Cuponomia. Click outside or press `Esc` to dismiss.
+- **Floating in‑page panel.** No Chrome popup window — the panel renders inside the active tab. Click outside or press `Esc` to dismiss.
 - **Two capture modes.**
   - *Generate* (Mode A): you give Hermes a term, it writes a 12–22 word sentence that uses the term unambiguously.
   - *Verbatim* (Mode B): you give Hermes a sentence + the slice that's the term, it keeps the sentence exactly and just translates.
@@ -43,7 +43,7 @@ sequenceDiagram
     participant User as User<br/>(highlights text)
     participant CS as Content script<br/>(page)
     participant SW as Service worker
-    participant OFF as Offscreen<br/>document
+    participant Off as Offscreen<br/>document
     participant LLM as LLM provider
     participant TTS as TTS provider
     participant DB as Dexie<br/>(IndexedDB)
@@ -54,26 +54,26 @@ sequenceDiagram
     CS-->>User: floating "+" button + popover
     User->>CS: pick mode (Generate / Verbatim)
     CS->>SW: capture payload
-    SW->>OFF: run-agent
+    SW->>Off: run-agent
 
-    OFF->>LLM: enrich (sentence + translation, JSON schema)
-    LLM-->>OFF: draft
+    Off->>LLM: enrich (sentence + translation, JSON schema)
+    LLM-->>Off: draft
 
     alt schema or echo-guard fails
-        OFF->>LLM: retry with violation hint
-        LLM-->>OFF: draft
-        Note over OFF,LLM: up to 3 attempts
+        Off->>LLM: retry with violation hint
+        LLM-->>Off: draft
+        Note over Off,LLM: up to 3 attempts
     end
 
-    OFF->>TTS: synthesize sentence audio
-    TTS-->>OFF: mp3
+    Off->>TTS: synthesize sentence audio
+    TTS-->>Off: mp3
     opt term audio enabled
-        OFF->>TTS: synthesize term audio
-        TTS-->>OFF: mp3
+        Off->>TTS: synthesize term audio
+        TTS-->>Off: mp3
     end
 
-    OFF->>DB: save card + audio cache
-    OFF->>SW: agent-event (result)
+    Off->>DB: save card + audio cache
+    Off->>SW: agent-event (result)
     SW-->>CS: collapse popover to toast
 
     User->>Panel: click toolbar icon
@@ -84,11 +84,11 @@ sequenceDiagram
 
     User->>Panel: Export N to Anki
     Panel->>SW: export-anki
-    SW->>OFF: build .apkg (sql.js + JSZip)
-    OFF->>DB: read cards + audio bytes
-    DB-->>OFF: blobs
-    OFF->>OFF: <a download> click
-    OFF-->>User: .apkg saved
+    SW->>Off: build .apkg (sql.js + JSZip)
+    Off->>DB: read cards + audio bytes
+    DB-->>Off: blobs
+    Off->>Off: <a download> click
+    Off-->>User: .apkg saved
     User->>Anki: import .apkg
     Anki-->>User: ready for SRS
 ```
@@ -185,7 +185,7 @@ Open the extension's options page (`chrome://extensions` → Hermes → *Details
 
 ## Acknowledgements
 
-The capture flow + popover UX is inspired by Cuponomia's in‑page panel pattern. The card‑editor structure draws from Anki's note‑type model. The agent loop's design borrows ideas from the deepagents pattern.
+The card‑editor structure draws from Anki's note‑type model. The agent loop's design borrows ideas from the deepagents pattern.
 
 ## License
 

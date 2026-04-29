@@ -94,7 +94,7 @@ chrome.commands.onCommand.addListener((command, tab) => {
   void chrome.tabs.sendMessage(tab.id, { kind: 'capture-trigger', via: 'hotkey' });
 });
 
-// Toolbar icon: toggle the in-page floating panel (Cuponomia-style).
+// Toolbar icon: toggle the in-page floating panel.
 // On restricted tabs (chrome://, web store, PDFs, etc.) where content scripts
 // can't run, fall back to opening the options page. On normal tabs, retry
 // after programmatically injecting the content script — handles the case

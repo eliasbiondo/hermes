@@ -1,6 +1,6 @@
-// Cuponomia-style floating panel: pre-mounts an iframe pointing at the
-// popup React app, then toggles visibility. Pre-mounting eliminates the
-// load flash on first toggle.
+// Floating in-page panel: pre-mounts an iframe pointing at the popup
+// React app, then toggles visibility. Pre-mounting eliminates the load
+// flash on first toggle.
 
 const PANEL_WIDTH = 420;
 const PANEL_HEIGHT = 600;
