@@ -4,17 +4,22 @@
 
 Hermes is a Chromium extension that builds vocabulary flashcards while you read. Highlight a word or a sentence on **any** page; Hermes writes a natural example sentence around it (or keeps the one you selected), translates it into your fluent language, generates a pronunciation clip, and packages everything as a real `.apkg` you can drop into Anki. The capture pipeline talks **directly** to your LLM/TTS provider — there's no Hermes server in the middle.
 
-## See it in 4 steps
+## See it in 6 steps
 
 | 1. Highlight any word on the page | 2. Choose how Hermes should phrase the card |
 | --- | --- |
 | Select a term — a floating "+" button appears next to it. (You can also right‑click or press `Ctrl/⌘+Shift+H`.) | Either **"Generate a sentence for me"** (Hermes writes a fresh natural sentence using the term) or **"Use my selection as the sentence"** (Hermes keeps your sentence verbatim, you mark the term inside it). |
 | ![Selecting a word triggers Hermes' floating add button](docs/screenshots/01-selection.png) | ![Mode picker: Generate or Verbatim](docs/screenshots/02-mode-picker.png) |
 
-| 3. The card is queued — keep reading | 4. Open the panel any time to review or export |
+| 3. The card is queued — keep reading | 4. Open the panel any time to review |
 | --- | --- |
-| A small toast confirms it. The agent runs in the background: writes the sentence, translates, synthesizes audio, saves the card. You don't have to wait. | Click the toolbar icon. A floating panel slides in over the page with three tabs: **Library** (ready to export), **Archive** (already exported), **Queue** (in flight). Hit *Export* to save a single `.apkg` for Anki. |
+| A small toast confirms it. The agent runs in the background: writes the sentence, translates, synthesizes audio, saves the card. You don't have to wait. | Click the toolbar icon. A floating panel slides in over the page with three tabs: **Library** (ready to export), **Archive** (already exported), **Queue** (in flight). |
 | ![Toast — Added "intended" to the queue](docs/screenshots/03-toast.png) | ![Floating Hermes panel listing the captured card](docs/screenshots/04-panel.png) |
+
+| 5. Export to Anki | 6. Review the card in Anki |
+| --- | --- |
+| Click *Export N to Anki* in the panel footer. Hermes builds a real `.apkg` (deterministic GUIDs so re‑imports update instead of duplicate) and downloads it as `export-YYYYMMDD-HHmm.apkg`. | Drop the `.apkg` into Anki — your sentence sits on the front (with the term highlighted + sentence audio), the translation + term‑pair audio sit on the back, ready for spaced repetition. |
+| ![Hermes panel with the Export to Anki button highlighted](docs/screenshots/05-export.png) | ![Anki showing the imported Hermes card with sentence, translation and audio](docs/screenshots/06-anki.png) |
 
 ## What's in the box
 
