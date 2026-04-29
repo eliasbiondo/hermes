@@ -4,37 +4,6 @@
 ' Rendered on-the-fly by https://www.plantuml.com/plantuml/proxy
 ' from raw.githubusercontent.com/eliasbiondo/hermes/main/docs/architecture.puml
 
-skinparam backgroundColor #0a0a0a
-skinparam defaultFontName "Inter"
-skinparam defaultFontSize 13
-skinparam defaultFontColor #f5f5f5
-skinparam shadowing false
-skinparam roundCorner 8
-
-skinparam component {
-  BackgroundColor #161616
-  BorderColor #2a2a2a
-  FontColor #f5f5f5
-}
-skinparam database {
-  BackgroundColor #161616
-  BorderColor #2a2a2a
-  FontColor #f5f5f5
-}
-skinparam cloud {
-  BackgroundColor #1f1f1f
-  BorderColor #3a3a3a
-  FontColor #f5f5f5
-}
-skinparam package {
-  BackgroundColor #0f0f0f
-  BorderColor #2a2a2a
-  FontColor #cccccc
-}
-skinparam ArrowColor #888888
-skinparam ArrowFontColor #aaaaaa
-skinparam ArrowFontSize 11
-
 package "Web page (any URL)" {
   [Floating "+" button\n(F-1.2)] as FAB
   [Capture popover\n(Mode picker · Shadow DOM)] as POPOVER
