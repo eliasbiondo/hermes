@@ -1,0 +1,66 @@
+@startuml hermes-architecture
+
+' Architecture overview — Hermes browser extension.
+' Rendered on-the-fly by https://www.plantuml.com/plantuml/proxy
+' from raw.githubusercontent.com/eliasbiondo/hermes/main/docs/architecture.puml
+
+skinparam backgroundColor #0a0a0a
+skinparam defaultFontName "Inter"
+skinparam defaultFontSize 13
+skinparam defaultFontColor #f5f5f5
+skinparam shadowing false
+skinparam roundCorner 8
+
+skinparam component {
+  BackgroundColor #161616
+  BorderColor #2a2a2a
+  FontColor #f5f5f5
+}
+skinparam database {
+  BackgroundColor #161616
+  BorderColor #2a2a2a
+  FontColor #f5f5f5
+}
+skinparam cloud {
+  BackgroundColor #1f1f1f
+  BorderColor #3a3a3a
+  FontColor #f5f5f5
+}
+skinparam package {
+  BackgroundColor #0f0f0f
+  BorderColor #2a2a2a
+  FontColor #cccccc
+}
+skinparam ArrowColor #888888
+skinparam ArrowFontColor #aaaaaa
+skinparam ArrowFontSize 11
+
+package "Web page (any URL)" {
+  [Floating "+" button\n(F-1.2)] as FAB
+  [Capture popover\n(Mode picker · Shadow DOM)] as POPOVER
+  [In-page panel iframe\n(Library · Archive · Queue)] as PANEL
+}
+
+package "Extension contexts" {
+  [Service worker\n(Message broker)] as SW
+  [Offscreen document\n(DOM + chrome APIs)] as OFFSCREEN
+  database "Dexie / IndexedDB\n• cards\n• audio cache\n• monthly usage" as DEXIE
+  database "chrome.storage.local\n• settings\n• API keys" as STORAGE
+}
+
+cloud "Your LLM provider\n(Gemini · OpenAI ·\nAnthropic · OpenRouter)" as LLM
+cloud "Your TTS provider\n(Edge Read Aloud ·\nElevenLabs)" as TTS
+cloud "Anki desktop\n(.apkg import)" as ANKI
+
+FAB        --> POPOVER : selection
+POPOVER    --> SW       : "capture"\n(Mode A / B)
+SW         --> OFFSCREEN : "run-agent"
+OFFSCREEN  --> LLM       : enrich (sentence + translation)
+OFFSCREEN  --> TTS       : synth (sentence + term audio)
+OFFSCREEN  --> DEXIE     : save card + cached audio
+SW         --> STORAGE   : load settings
+PANEL      --> SW        : list / delete / export
+SW         --> OFFSCREEN : "offscreen-export-anki"
+OFFSCREEN  --> ANKI      : .apkg via <a download>
+
+@enduml

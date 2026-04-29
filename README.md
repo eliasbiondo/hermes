@@ -1,59 +1,45 @@
 # Hermes 🃏
 
-> Turn anything you read into Anki-ready flashcards — straight from your browser, in any language pair.
+> Highlight a word, get an Anki flashcard. Any language pair. Your keys, your data.
 
-Hermes is a Chromium extension for vocabulary learners. Highlight a word or sentence on any page, pick how Hermes should phrase the card, and it builds a fully-rendered Anki note with AI-written context, a translation in your fluent language, and a pronunciation clip. Captures stream **directly from your browser to your provider** — nothing routes through a server.
+Hermes is a Chromium extension that builds vocabulary flashcards while you read. Highlight a word or a sentence on **any** page; Hermes writes a natural example sentence around it (or keeps the one you selected), translates it into your fluent language, generates a pronunciation clip, and packages everything as a real `.apkg` you can drop into Anki. The capture pipeline talks **directly** to your LLM/TTS provider — there's no Hermes server in the middle.
 
-## Walkthrough
+## See it in 4 steps
 
-| 1. Select text on any page | 2. Pick how Hermes should phrase the card |
+| 1. Highlight any word on the page | 2. Choose how Hermes should phrase the card |
 | --- | --- |
-| ![Selection on a New York Times article — Hermes floating button](docs/screenshots/01-selection.png) | ![Capture popover showing Generate / Verbatim modes](docs/screenshots/02-mode-picker.png) |
+| Select a term — a floating "+" button appears next to it. (You can also right‑click or press `Ctrl/⌘+Shift+H`.) | Either **"Generate a sentence for me"** (Hermes writes a fresh natural sentence using the term) or **"Use my selection as the sentence"** (Hermes keeps your sentence verbatim, you mark the term inside it). |
+| ![Selecting a word triggers Hermes' floating add button](docs/screenshots/01-selection.png) | ![Mode picker: Generate or Verbatim](docs/screenshots/02-mode-picker.png) |
 
-| 3. Capture is queued | 4. Open the floating panel anytime |
+| 3. The card is queued — keep reading | 4. Open the panel any time to review or export |
 | --- | --- |
-| ![Toast: Added "intended" to the queue](docs/screenshots/03-toast.png) | ![In-page floating panel listing the captured card](docs/screenshots/04-panel.png) |
+| A small toast confirms it. The agent runs in the background: writes the sentence, translates, synthesizes audio, saves the card. You don't have to wait. | Click the toolbar icon. A floating panel slides in over the page with three tabs: **Library** (ready to export), **Archive** (already exported), **Queue** (in flight). Hit *Export* to save a single `.apkg` for Anki. |
+| ![Toast — Added "intended" to the queue](docs/screenshots/03-toast.png) | ![Floating Hermes panel listing the captured card](docs/screenshots/04-panel.png) |
 
-## Highlights
+## What's in the box
 
-- **Floating in-page panel.** Click the toolbar icon and a Cuponomia-style panel slides in over the current tab — Library, Archive, and live Queue tabs side-by-side, no Chrome popup chrome.
-- **Two capture modes.** *Generate* writes a fresh sentence around the selected term; *Verbatim* keeps your selected sentence and lets you highlight the term inside it.
-- **Multi-language.** Pick your **Learning** and **Fluent** languages in settings (English, Portuguese · Brazil, Spanish, French, German, Italian, Dutch, Japanese, Korean, Chinese — Simplified and Traditional, Russian, Polish, Turkish, Arabic). The agent prompt + validation are templated against the chosen pair.
-- **Bring your own LLM key.** Gemini · OpenAI · Anthropic · OpenRouter. Keys stay in `chrome.storage.local`, never synced.
-- **Bring your own voice.** Microsoft Edge "Read Aloud" (free, neural, English only) or ElevenLabs (paid, multi-language). Audio is cached per `(text, voice, provider)` so re-exports don't re-spend.
-- **Anki-native export.** Cards build a real `.apkg` (sql.js + JSZip in an offscreen document) with the bundled *Hermes Card* note type. Filename is `export-YYYYMMDD-HHmm.apkg`. Re-imports update existing notes via deterministic GUIDs instead of duplicating.
-- **Privacy by design.** Manifest V3, optional host permissions, no analytics. The capture pipeline never leaves your machine except for the calls you authorise to your own provider.
+- **Floating in‑page panel.** No Chrome popup window — the panel renders inside the active tab, like Cuponomia. Click outside or press `Esc` to dismiss.
+- **Two capture modes.**
+  - *Generate* (Mode A): you give Hermes a term, it writes a 12–22 word sentence that uses the term unambiguously.
+  - *Verbatim* (Mode B): you give Hermes a sentence + the slice that's the term, it keeps the sentence exactly and just translates.
+- **Multi‑language out of the box.** Configure your **Learning** + **Fluent** language pair in Settings → Languages. Supported: English, Portuguese (Brazil), Spanish, French, German, Italian, Dutch, Japanese, Korean, Chinese (Simplified), Chinese (Traditional), Russian, Polish, Turkish, Arabic.
+- **Bring your own LLM key.** Gemini · OpenAI · Anthropic · OpenRouter. Stored locally only — never synced.
+- **Two voices.** Microsoft Edge "Read Aloud" (free, neural, English‑only) or ElevenLabs (paid, multi‑language).
+- **Real `.apkg` export.** Cards build a SQLite‑backed Anki package (`sql.js` + `jszip`) with a custom *Hermes Card* note type. Re‑import updates existing notes by deterministic GUID — no duplicates.
+- **Audio cache.** TTS clips are content‑addressed by `(text, voice, provider)` so re‑exports never re‑spend.
+- **Privacy first.** Manifest V3, optional host permissions per provider, no analytics, no telemetry. Your selections leave your machine **only** for the calls you've authorised to your own provider.
 
-## How it works
+## How it's wired
 
-```
-┌─ Page ──────────────────────────────────────────────┐
-│  Selection  →  Floating button / right-click /     │
-│                Ctrl/⌘+Shift+H                       │
-│        │                                            │
-│        ▼                                            │
-│  Capture popover (Mode A or B)                      │
-└────────┬────────────────────────────────────────────┘
-         │ chrome.runtime.sendMessage
-         ▼
-┌─ Service worker ────────────────────────────────────┐
-│  Routes to offscreen document                      │
-└────────┬────────────────────────────────────────────┘
-         │ message
-         ▼
-┌─ Offscreen document ───────────────────────────────┐
-│  • LangChain agent (deepagents-style runner)       │
-│      ├─ enrich   → JSON draft (sentence,           │
-│      │             translation, term, lemma)       │
-│      ├─ tts      → sentence audio (Edge / ElevenL.)│
-│      └─ tts*term → term audio (back-of-card)       │
-│  • sql.js + JSZip → .apkg builder                  │
-│  • <a download>  → triggers Save-As dialog         │
-└────────────────────────────────────────────────────┘
-         │
-         ▼
-   Dexie/IndexedDB (cards, audio cache, monthly usage)
-```
+<p align="center">
+  <a href="docs/architecture.puml">
+    <img src="https://www.plantuml.com/plantuml/proxy?cache=no&fmt=svg&src=https://raw.githubusercontent.com/eliasbiondo/hermes/main/docs/architecture.puml" alt="Hermes architecture diagram" />
+  </a>
+</p>
+
+> Diagram source: [`docs/architecture.puml`](docs/architecture.puml). Rendered live by `plantuml.com`'s proxy from `main` — edit the source and the image updates next time the README is fetched.
+
+In short: a content script in the page sends captures to the **service worker**, which delegates the heavy lifting (agent calls, sql.js, JSZip) to an **offscreen document** that has DOM globals. The agent (LangChain runner with a JSON‑output schema) drives the LLM and TTS providers, then writes the card to Dexie/IndexedDB. Export builds the `.apkg` in the offscreen and triggers it via a hidden `<a download>` click — Chrome bug 579563 makes `chrome.downloads.download(filename)` unreliable on blob URLs.
 
 ## Repository layout
 
@@ -77,6 +63,9 @@ src/
 ├─ popup/             # The in-page floating panel (loaded inside an iframe)
 └─ types/             # Shared TS types
 public/icons/         # Toolbar / install icons (rendered by scripts/build-icons.mjs)
+docs/
+├─ architecture.puml  # Diagram source for the README
+└─ screenshots/       # README walkthrough imagery
 scripts/
 └─ build-icons.mjs    # Pure-Node PNG generator for the H-monogram tile
 ```
@@ -92,7 +81,7 @@ Then in Chrome / Edge:
 
 1. Open `chrome://extensions` and enable **Developer mode**.
 2. Click **Load unpacked** and pick the project's `dist/` directory.
-3. Grant any provider host permissions Hermes asks for the first time you select a provider in settings.
+3. The first time you select a provider in Settings, Chrome will prompt for the host permission Hermes needs to talk to it.
 
 Production build:
 
@@ -107,43 +96,43 @@ To regenerate the toolbar icon set (if you change the brand glyph):
 node scripts/build-icons.mjs
 ```
 
-## Configuration
+## Settings cheat sheet
 
 Open the extension's options page (`chrome://extensions` → Hermes → *Details* → *Extension options*).
 
-| Section | Key knobs |
+| Section | What you set |
 | --- | --- |
-| **Languages** | Pick Learning + Fluent. Drives the agent prompt and the available voice providers. |
-| **Language model** | Gemini / OpenAI / Anthropic / OpenRouter. API key is stored locally (never synced). |
-| **Voice** | Edge (English only, free) or ElevenLabs (multi-language, paid). |
-| **Anki export** | Default deck name and tags applied to every export. |
-| **Capture** | Toggles for the floating button, right-click menu, and `Ctrl/⌘+Shift+H` shortcut. |
-| **Usage** | Per-month roll-up of LLM calls, TTS calls, tokens, and estimated USD spend. |
-| **Backup** | JSON (full-fidelity) or CSV (inspection) export, plus JSON import. |
-| **Developer** | Stream the agent steps live in the popover; optional LangSmith tracing. |
+| **Languages** | The pair Hermes works in. Drives the prompt and which voice providers are offered. |
+| **Language model** | Provider + API key + model id. Test connection roundtrips a tiny request. |
+| **Voice** | Edge (free, English‑only) or ElevenLabs (paid, multi‑language) + voice id. *Term audio* toggles a second clip on the back of the card. |
+| **Anki export** | Default deck name (use `::` for nested decks) and tags applied to every card. |
+| **Capture** | Toggle the floating button, the right‑click menu, and the `Ctrl/⌘+Shift+H` shortcut. |
+| **Usage** | Per‑month roll‑up: LLM calls, TTS calls, tokens (in/out), estimated USD spend. |
+| **Backup** | JSON (full‑fidelity, for re‑import) or CSV (read‑only inspection) export. |
+| **Developer** | Stream the agent's tool steps live in the popover; optional LangSmith tracing. |
 
 ## Tech stack
 
 | Layer | Tech |
 | --- | --- |
 | Build | Vite + `@crxjs/vite-plugin`, `vite-plugin-node-polyfills` |
-| UI    | React 19, plain CSS with `lab(...)` color tokens (no design-system framework) |
-| State / storage | Dexie (IndexedDB), `chrome.storage.local` for settings |
+| UI    | React 19, plain CSS with `lab(...)` color tokens (no design‑system framework) |
+| State / storage | Dexie (IndexedDB) for cards + audio; `chrome.storage.local` for settings |
 | Agent runtime | LangChain (`@langchain/core`, `@langchain/openai`, `@langchain/anthropic`, `@langchain/google-genai`, `langchain`), Zod schemas |
 | TTS | Microsoft Edge "Read Aloud" (WebSocket) and ElevenLabs REST |
 | Audio encoding | `@breezystack/lamejs` (MP3) |
-| Anki export | `sql.js` (collection.anki2) + `jszip` |
+| Anki export | `sql.js` (collection.anki2) + `jszip`, triggered via offscreen `<a download>` |
 
 ## Privacy & security
 
-- **No backend.** The only network calls Hermes makes are to your chosen LLM provider, the TTS provider you picked, and the page you're capturing from.
-- **Keys never leave your browser.** They're stored in `chrome.storage.local` (not `sync`).
-- **Optional host permissions.** Hermes only asks for a provider's host once you enable it in settings.
-- **Cards stay local.** Saved cards live in IndexedDB until you explicitly export them.
+- **No backend.** The only network calls Hermes makes are to the LLM provider you configured, the TTS provider you configured, and the page you're capturing from.
+- **Keys never leave your browser.** Stored in `chrome.storage.local` (not `sync`).
+- **Optional host permissions.** Hermes only asks for a provider's host once you enable it in Settings.
+- **Cards stay local.** Saved cards live in IndexedDB until you explicitly export to `.apkg` or hit *Backup → Export*.
 
 ## Acknowledgements
 
-The capture flow + popover UX is inspired by Cuponomia's in-page panel pattern. The card-editor structure draws from Anki's note-type model. The agent loop's design borrows ideas from the deepagents pattern.
+The capture flow + popover UX is inspired by Cuponomia's in‑page panel pattern. The card‑editor structure draws from Anki's note‑type model. The agent loop's design borrows ideas from the deepagents pattern.
 
 ## License
 
