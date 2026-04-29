@@ -4,9 +4,15 @@
 
 Hermes is a Chromium extension for vocabulary learners. Highlight a word or sentence on any page, pick how Hermes should phrase the card, and it builds a fully-rendered Anki note with AI-written context, a translation in your fluent language, and a pronunciation clip. Captures stream **directly from your browser to your provider** — nothing routes through a server.
 
-<p align="center">
-  <img src="public/icons/icon-128.png" alt="Hermes" width="96" height="96" />
-</p>
+## Walkthrough
+
+| 1. Select text on any page | 2. Pick how Hermes should phrase the card |
+| --- | --- |
+| ![Selection on a New York Times article — Hermes floating button](docs/screenshots/01-selection.png) | ![Capture popover showing Generate / Verbatim modes](docs/screenshots/02-mode-picker.png) |
+
+| 3. Capture is queued | 4. Open the floating panel anytime |
+| --- | --- |
+| ![Toast: Added "intended" to the queue](docs/screenshots/03-toast.png) | ![In-page floating panel listing the captured card](docs/screenshots/04-panel.png) |
 
 ## Highlights
 
