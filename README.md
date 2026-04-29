@@ -36,15 +36,64 @@ Hermes is a Chromium extension that builds vocabulary flashcards while you read.
 
 ## How it's wired
 
-<p align="center">
-  <a href="docs/architecture.puml">
-    <img src="https://www.plantuml.com/plantuml/proxy?cache=no&fmt=svg&src=https://raw.githubusercontent.com/eliasbiondo/hermes/main/docs/architecture.puml" alt="Hermes architecture diagram" />
-  </a>
-</p>
+The capture-to-Anki pipeline runs as a sequence across the page, the service worker, and an offscreen document, with all heavy lifting (LangChain agent, sql.js, JSZip) confined to the offscreen so the SW stays light:
 
-> Diagram source: [`docs/architecture.puml`](docs/architecture.puml). Rendered live by `plantuml.com`'s proxy from `main` — edit the source and the image updates next time the README is fetched.
+```mermaid
+sequenceDiagram
+    participant User as User<br/>(highlights text)
+    participant CS as Content script<br/>(page)
+    participant SW as Service worker
+    participant OFF as Offscreen<br/>document
+    participant LLM as LLM provider
+    participant TTS as TTS provider
+    participant DB as Dexie<br/>(IndexedDB)
+    participant Panel as Floating panel
+    participant Anki
 
-In short: a content script in the page sends captures to the **service worker**, which delegates the heavy lifting (agent calls, sql.js, JSZip) to an **offscreen document** that has DOM globals. The agent (LangChain runner with a JSON‑output schema) drives the LLM and TTS providers, then writes the card to Dexie/IndexedDB. Export builds the `.apkg` in the offscreen and triggers it via a hidden `<a download>` click — Chrome bug 579563 makes `chrome.downloads.download(filename)` unreliable on blob URLs.
+    User->>CS: select text
+    CS-->>User: floating "+" button + popover
+    User->>CS: pick mode (Generate / Verbatim)
+    CS->>SW: capture payload
+    SW->>OFF: run-agent
+
+    OFF->>LLM: enrich (sentence + translation, JSON schema)
+    LLM-->>OFF: draft
+
+    alt schema or echo-guard fails
+        OFF->>LLM: retry with violation hint
+        LLM-->>OFF: draft
+        Note over OFF,LLM: up to 3 attempts
+    end
+
+    OFF->>TTS: synthesize sentence audio
+    TTS-->>OFF: mp3
+    opt term audio enabled
+        OFF->>TTS: synthesize term audio
+        TTS-->>OFF: mp3
+    end
+
+    OFF->>DB: save card + audio cache
+    OFF->>SW: agent-event (result)
+    SW-->>CS: collapse popover to toast
+
+    User->>Panel: click toolbar icon
+    Panel->>SW: list-cards / list-pending-runs
+    SW->>DB: query
+    DB-->>SW: rows
+    SW-->>Panel: cards + queue
+
+    User->>Panel: Export N to Anki
+    Panel->>SW: export-anki
+    SW->>OFF: build .apkg (sql.js + JSZip)
+    OFF->>DB: read cards + audio bytes
+    DB-->>OFF: blobs
+    OFF->>OFF: <a download> click
+    OFF-->>User: .apkg saved
+    User->>Anki: import .apkg
+    Anki-->>User: ready for SRS
+```
+
+The agent is a LangChain runner that asks the model for a single JSON object matching a Zod schema (sentence, translation, term, lemma, type), and re-asks with a violation hint if anything fails the verbatim‑substring or echo guards. The `.apkg` build runs in the offscreen because sql.js needs `document` for its wasm bootstrap; the download fires from a hidden `<a download>` click in that same offscreen — Chrome bug 579563 makes `chrome.downloads.download(filename)` unreliable on blob URLs.
 
 ## Repository layout
 
@@ -69,7 +118,6 @@ src/
 └─ types/             # Shared TS types
 public/icons/         # Toolbar / install icons (rendered by scripts/build-icons.mjs)
 docs/
-├─ architecture.puml  # Diagram source for the README
 └─ screenshots/       # README walkthrough imagery
 scripts/
 └─ build-icons.mjs    # Pure-Node PNG generator for the H-monogram tile
